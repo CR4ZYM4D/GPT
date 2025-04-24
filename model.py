@@ -8,13 +8,19 @@ block_size = 9 # size of a single word or a combination of words (we will refer 
 
 batch_size = 12 # no. of said blocks or words that we will handle at once
 
-vector_dimension = 512 # dimensions of each of the alphabet or token vector\
+vector_dimension = 512 # dimensions of each of the alphabet or token vector
+
+dropout = 0.5
+
+n_heads = 8 # no of attention heads
+
+n_layers = 4 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
 learning_rate = 3e-2
 
-max_iterations = 200
+max_iterations = 20000
 
 train_step_iteration = 10
 
@@ -78,17 +84,47 @@ def getBatch(split = "train"):
 
         y = torch.stack([training_set[ix + 1: ix + block_size + 1] for ix in index])
 
-        x, y = x.to(device), y.to(device)
-
     else:
 
         x = torch.stack([testing_set[ix: ix + block_size] for ix in index])
 
         y = torch.stack([testing_set[ix + 1: ix + block_size + 1] for ix in index])
 
-        x, y = x.to(device), y.to(device)
+    x, y = x.to(device), y.to(device)
 
     return x, y
+
+
+
+# class that defines a single decoder block of the model
+
+class Block(nn.Module):
+
+    def __init__(self, n_heads, vector_dimension):
+        super().__init__()
+
+        dimension_head = vector_dimension // n_heads
+
+        self.attention = MultiHeadAttention(n_heads, dimension_head)
+
+        self.feed_forward = FeedForward(vector_dimension)
+
+        self.layer_norm_1 = nn.LayerNorm(vector_dimension)
+        
+        self.layer_norm_2 = nn.LayerNorm(vector_dimension)
+
+    def forward(self, x):
+
+        y = self.attention(x)
+
+        x = self.layer_norm_1(x + y)
+
+        y = self.feed_forward(x)
+
+        x = self.layer_norm_2(x + y)
+
+        return x
+
 
 class GPTModel(nn.Module):
 
@@ -99,7 +135,27 @@ class GPTModel(nn.Module):
 
         self.vocab_size = vocab_size
 
-        self.token_embeddings = nn.Embedding(vocab_size, vocab_size)
+        self.token_embeddings = nn.Embedding(vocab_size, vector_dimension)
+
+        self.positional_encodings = nn.Embedding(block_size, vector_dimension)
+
+        self.layers = nn.Sequential(*[Block(vector_dimension, n_heads) for _ in range (n_layers)])
+
+        self.final_layer_norm = nn.LayerNorm(vector_dimension)
+
+        self.linear = nn.Linear(vector_dimension, vocab_size)
+
+        self.apply(self.initWeights)
+
+    def initWeights(self, module):
+
+        if isinstance(module, nn.Linear):
+
+            torch.nn.init.normal_(module.weight, std = 0.02)
+        
+        elif isinstance(module, nn.LayerNorm):
+
+            torch.nn.init.normal_(module.weight, std = 0.02)
     
     # method to return the token embedding of given index token and return the loss if there is a target set given
 
@@ -109,6 +165,18 @@ class GPTModel(nn.Module):
  
         logits = self.token_embeddings(index)
         
+        token_embedding = self.token_embeddings(index)
+
+        positional_encoding =  self.positional_encodings(index)
+
+        x = token_embedding + positional_encoding
+
+        x = self.layers(x)
+
+        x = self.final_layer_norm(x)
+
+        logits = self.linear(x)
+
         if targets == None:
 
             loss=None
@@ -163,9 +231,9 @@ def train(model: GPTModel):
 
         optimizer.step()
 
-        if i % train_step_iteration == 0:
+        # if i % train_step_iteration == 0:
 
-            print(loss.item())
+        #     print(loss.item())
 
 # method to calculate the loss
 
