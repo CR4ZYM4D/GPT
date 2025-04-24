@@ -94,7 +94,24 @@ def getBatch(split = "train"):
 
     return x, y
 
+# class that performs the feed forward mechanism of the decoder block (class that normalizes the vectors, aplies Relu and again normalizes them)
 
+class FeedForward(nn.Module):
+
+    def __init__(self, vector_dimension):
+        super().__init__()
+
+        self.layer = nn.Sequential(
+            nn.Linear(vector_dimension, vector_dimension * 4),
+            nn.ReLU(),
+            nn.Linear(vector_dimension * 4, vector_dimension)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+
+        return self.dropout(self.layer(x))
 
 # class that defines a single decoder block of the model
 
@@ -146,6 +163,8 @@ class GPTModel(nn.Module):
         self.linear = nn.Linear(vector_dimension, vocab_size)
 
         self.apply(self.initWeights)
+
+    # method to initialize the weights
 
     def initWeights(self, module):
 
