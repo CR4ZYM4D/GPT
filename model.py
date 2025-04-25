@@ -4,31 +4,31 @@ import torch.nn.functional as F
 
 # important constants to be used in the model
 
-block_size = 9 # size of a single word or a combination of words (we will refer to this a s a block)
+block_size = 40 # size of a single word or a combination of words (we will refer to this a s a block)
 
-batch_size = 12 # no. of said blocks or words that we will handle at once
+batch_size = 20 # no. of said blocks or words that we will handle at once
 
 vector_dimension = 512 # dimensions of each of the alphabet or token vector
 
 dropout = 0.5
 
-n_heads = 8 # no of attention heads
+n_heads = 12 # no of attention heads
 
-n_layers = 4 # no of block layers used 
+n_layers = 10 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 3e-2
+learning_rate = 5e-2
 
-max_iterations = 20000
+max_iterations = 2000
 
 train_step_iteration = 10
 
-max_test_iterations = 200
+max_test_iterations = 2000
 
 test_iterations = 20
 
-test_step_iterations = 10
+test_step_iterations = 100
 
 # using GPU if available
 
@@ -112,6 +112,59 @@ class FeedForward(nn.Module):
     def forward(self, x):
 
         return self.dropout(self.layer(x))
+    
+# class that defines the single head self attention
+
+class AttentionHead(nn.Module):
+
+    def __init__(self, dimension_head):
+        super().__init__()
+
+        self.key = nn.Linear(vector_dimension, dimension_head, bias = False)
+        self.query = nn.Linear(vector_dimension, dimension_head, bias = False)
+        self.value = nn.Linear(vector_dimension, dimension_head, bias = False)
+
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+
+        batch, time, channel = x.shape
+
+        k = self.key(x)
+        q = self.query(x)
+        v = self.value(x)
+
+        att = (q @ k.transpose(-2, -1)) / (k.shape[-1] ** 0.5)
+        att = att.masked_fill(self.tril[:time, :time] == 0 , float('-inf'))
+
+        att = F.softmax(att, dim = -1)
+        att = self.dropout(att)
+
+        out = att @ v
+
+        return out
+
+# class that defines the multi head self attention mechanism
+
+class MultiHeadAttention(nn.Module):
+
+    def __init__(self, n_heads, dimension_head):
+        super().__init__()
+
+        self.attention_heads = nn.ModuleList([AttentionHead(dimension_head) for _ in range (n_heads)])
+
+        self.projection_layer = nn.Linear(n_heads * dimension_head, vector_dimension)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+
+        out = torch.cat([h(x) for h in self.attention_heads], dim = -1)
+        out = self.dropout(self.projection_layer(out))
+
+        return out
 
 # class that defines a single decoder block of the model
 
@@ -156,7 +209,7 @@ class GPTModel(nn.Module):
 
         self.positional_encodings = nn.Embedding(block_size, vector_dimension)
 
-        self.layers = nn.Sequential(*[Block(vector_dimension, n_heads) for _ in range (n_layers)])
+        self.layers = nn.Sequential(*[Block(n_heads, vector_dimension) for _ in range (n_layers)])
 
         self.final_layer_norm = nn.LayerNorm(vector_dimension)
 
@@ -182,11 +235,11 @@ class GPTModel(nn.Module):
 
         # getting the token embedding of the given token index
  
-        logits = self.token_embeddings(index)
+        batch, time = index.shape
         
         token_embedding = self.token_embeddings(index)
 
-        positional_encoding =  self.positional_encodings(index)
+        positional_encoding =  self.positional_encodings(torch.arange(time, device = device))
 
         x = token_embedding + positional_encoding
 
@@ -202,9 +255,8 @@ class GPTModel(nn.Module):
 
         else: 
 
-            batch, time, channels = logits.shape
-
             # making logits and targets of similar dimensions to calculate the loss
+            batch, time, channels = logits.shape
 
             logits = logits.view(batch * time, channels)
 
@@ -249,10 +301,6 @@ def train(model: GPTModel):
         loss.backward()
 
         optimizer.step()
-
-        # if i % train_step_iteration == 0:
-
-        #     print(loss.item())
 
 # method to calculate the loss
 
@@ -299,10 +347,10 @@ def main():
             
             print(f"At step {i+1} training loss: {loss['train']}, testing loss: {loss['test']}")
 
-    context = torch.zeros((1,1), dtype = torch.long, device=device)
-    generated_chars = decode(model.generate(context, max_sequence_length)[0].tolist())
+#    context = torch.zeros((1,1), dtype = torch.long, device=device)
+#    generated_chars = decode(model.generate(context, max_sequence_length)[0].tolist())
 
-    print(generated_chars)
+#    print(generated_chars)
 
 if __name__ == "__main__":
 
