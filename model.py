@@ -1,30 +1,34 @@
+import random
+import mmap
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 # important constants to be used in the model
+model_path = "./src/model.pkl"
 
-block_size = 40 # size of a single word or a combination of words (we will refer to this a s a block)
+block_size = 128 # size of a single word or a combination of words (we will refer to this a s a block)
 
-batch_size = 20 # no. of said blocks or words that we will handle at once
+batch_size = 12 # no. of said blocks or words that we will handle at once
 
 vector_dimension = 512 # dimensions of each of the alphabet or token vector
 
 dropout = 0.5
 
-n_heads = 12 # no of attention heads
+n_heads = 16 # no of attention heads
 
-n_layers = 10 # no of block layers used 
+n_layers = 8 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
 learning_rate = 5e-2
 
-max_iterations = 2000
+max_iterations = 20000
 
 train_step_iteration = 10
 
-max_test_iterations = 2000
+max_test_iterations = 200
 
 test_iterations = 20
 
@@ -45,9 +49,9 @@ def readTextFile(path: str):
 
     characters = sorted(set(text))
 
-    return text, characters
+    return characters
 
-text, characters = readTextFile('./src/wizardOfOz.txt')
+characters = readTextFile('./dataset/vocab.txt')
 
 #lambda functions to encode and decode  the text
 
@@ -61,34 +65,38 @@ decode = lambda s: ''.join(numToString[n] for n in s)
 
 #converting the text into a tensor
 
-data = torch.tensor(encode(text), dtype = torch.long)
+def getChunk(split):
 
-# setting training and testing set sizes as 80% and 20%
+    file_path = "./dataset/training data.txt" if split == "train" else "./dataset/testing data.txt"
 
-training_set_size = int( len(data) * 0.8)
+    with open(file_path, "rb") as f:
 
-testing_set_size = len(data) - training_set_size
+        with mmap.mmap(f.fileno(), 0, access= mmap.ACCESS_READ) as mm:
 
-training_set = data[:training_set_size]
-testing_set = data[training_set_size:]
+            file_size = len(mm)
+
+            start_pos = random.randint(0, file_size - block_size * batch_size -1)
+
+            mm.seek(start_pos)
+
+            block = mm.read(block_size * batch_size)
+
+            decoded_block = block.decode(encoding = "utf-8", errors = "ignore").replace("\r", "")
+
+            data = torch.tensor(encode(decoded_block), dtype = torch.long)
+
+    return data
 
 # function to split and return the training and testing batches
 
 def getBatch(split = "train"):
     
-    index = torch.randint(high = training_set_size - block_size -1 if split == "train" else testing_set_size-block_size-1, size=(batch_size,))
+    data = getChunk(split)
 
-    if split == "train":
-
-        x = torch.stack([training_set[ix: ix + block_size] for ix in index])
-
-        y = torch.stack([training_set[ix + 1: ix + block_size + 1] for ix in index])
-
-    else:
-
-        x = torch.stack([testing_set[ix: ix + block_size] for ix in index])
-
-        y = torch.stack([testing_set[ix + 1: ix + block_size + 1] for ix in index])
+    index = torch.randint(high = len(data) - block_size -1, size = (batch_size,))
+    
+    x = torch.stack([data[i: i+block_size] for i in index])
+    y = torch.stack([data[i+1: i+1+block_size] for i in index])
 
     x, y = x.to(device), y.to(device)
 
@@ -269,6 +277,8 @@ class GPTModel(nn.Module):
     # method to generate the tokens
 
     def generate(self, index, max_sequence_length):
+
+        result = torch.clone(index)
     
         for _ in range (max_sequence_length):
 
@@ -282,7 +292,14 @@ class GPTModel(nn.Module):
 
             index = torch.cat((index, next_index), dim = 1)
 
-        return index
+            result = torch.cat((result, next_index), dim = 1)
+
+            a, b = index.shape
+
+            if b >= block_size:
+                index = index[:, 1:]
+
+        return result
 
 # method to optimize and train the model
 
@@ -301,6 +318,10 @@ def train(model: GPTModel):
         loss.backward()
 
         optimizer.step()
+
+    torch.save(model, model_path)
+
+    print("saved")
 
 # method to calculate the loss
 
@@ -336,6 +357,8 @@ def main():
 
     model = GPTModel(vocab_size)
 
+    # model = torch.load(model_path, weights_only= False)
+
     model = model.to(device)
 
     train(model)
@@ -347,10 +370,15 @@ def main():
             
             print(f"At step {i+1} training loss: {loss['train']}, testing loss: {loss['test']}")
 
-#    context = torch.zeros((1,1), dtype = torch.long, device=device)
-#    generated_chars = decode(model.generate(context, max_sequence_length)[0].tolist())
+    while True:
 
-#    print(generated_chars)
+        prompt = input("enter a prompt: ")
+        context = torch.tensor(encode(prompt), dtype = torch.long, device=device)
+        context = context.unsqueeze(0)
+
+        generated_chars = decode(model.generate(context, max_sequence_length)[0].tolist())
+
+        print(generated_chars)
 
 if __name__ == "__main__":
 
