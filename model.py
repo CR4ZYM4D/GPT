@@ -10,29 +10,29 @@ model_path = "./src/model.pkl"
 
 block_size = 128 # size of a single word or a combination of words (we will refer to this a s a block)
 
-batch_size = 12 # no. of said blocks or words that we will handle at once
+batch_size = 48 # no. of said blocks or words that we will handle at once
 
 vector_dimension = 512 # dimensions of each of the alphabet or token vector
 
 dropout = 0.5
 
-n_heads = 16 # no of attention heads
+n_heads = 12 # no of attention heads
 
-n_layers = 8 # no of block layers used 
+n_layers = 6 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 5e-2
+learning_rate = 3e-5
 
-max_iterations = 20000
+max_iterations = 10000
 
-train_step_iteration = 10
+train_step_iteration = 2500
 
 max_test_iterations = 200
 
-test_iterations = 20
+test_iterations = 10
 
-test_step_iterations = 100
+test_step_iterations = 5
 
 # using GPU if available
 
@@ -53,7 +53,7 @@ def readTextFile(path: str):
 
 characters = readTextFile('./dataset/vocab.txt')
 
-#lambda functions to encode and decode  the text
+#lambda functions to encode and decode  the text                  
 
 stringToNum = {ch: i for i, ch  in enumerate(characters)}
 
@@ -306,8 +306,12 @@ class GPTModel(nn.Module):
 def train(model: GPTModel):
 
     optimizer = torch.optim.AdamW(model.parameters(), lr = learning_rate)
+    print("starting training")
 
     for i in range (max_iterations):
+
+        if (i+1) % 1000 ==0:
+            print(f"{i+1} training loops done")
 
         x, y = getBatch("train")
 
@@ -318,6 +322,9 @@ def train(model: GPTModel):
         loss.backward()
 
         optimizer.step()
+
+        if i % train_step_iteration ==0:
+            print(f"{loss.item():.3f}")
 
     torch.save(model, model_path)
 
@@ -357,22 +364,22 @@ def main():
 
     model = GPTModel(vocab_size)
 
-    # model = torch.load(model_path, weights_only= False)
+    model = torch.load(model_path, weights_only= False)
 
     model = model.to(device)
 
-    train(model)
+    # train(model)
 
     for i in range (max_test_iterations):
 
         loss = calculate_loss(model)
-        if i % test_step_iterations == 9:
+        if (i+1) % test_step_iterations == 0:
             
-            print(f"At step {i+1} training loss: {loss['train']}, testing loss: {loss['test']}")
+            print(f"At step {i+1} training loss: {loss['train']:.3f}, testing loss: {loss['test']:.3f}")
 
     while True:
 
-        prompt = input("enter a prompt: ")
+        prompt = input("enter a prompt within 128 characters: ")
         context = torch.tensor(encode(prompt), dtype = torch.long, device=device)
         context = context.unsqueeze(0)
 
