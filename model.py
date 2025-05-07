@@ -1,11 +1,15 @@
 import random
 import mmap
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 # important constants to be used in the model
+
 model_path = "./src/model.pkl"
 
 block_size = 128 # size of a single word or a combination of words (we will refer to this a s a block)
@@ -22,11 +26,11 @@ n_layers = 6 # no of block layers used
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 3e-5
+learning_rate = 1e-6
 
 max_iterations = 10000
 
-train_step_iteration = 2500
+train_step_iteration = 1000
 
 max_test_iterations = 200
 
@@ -308,14 +312,15 @@ def train(model: GPTModel):
     optimizer = torch.optim.AdamW(model.parameters(), lr = learning_rate)
     print("starting training")
 
-    for i in range (max_iterations):
+    losses = []
 
-        if (i+1) % 1000 ==0:
-            print(f"{i+1} training loops done")
+    for i in range (max_iterations):
 
         x, y = getBatch("train")
 
         logits, loss = model.forward(x, y)
+
+        losses.append(loss.item())
 
         optimizer.zero_grad(set_to_none=True)
 
@@ -323,10 +328,16 @@ def train(model: GPTModel):
 
         optimizer.step()
 
-        if i % train_step_iteration ==0:
-            print(f"{loss.item():.3f}")
+        if (i+1) % train_step_iteration == 0:
+            print(f"{i+1} training loops done loss is: {loss.item():.5f}")
 
     torch.save(model, model_path)
+
+    plt.scatter(np.arange(0, max_iterations+1), losses)
+    plt.title("training data loss v/s training iterations")
+    plt.xticks(np.arange(0, max_iterations+1, 500))
+    plt.yticks(np.arange(1.2, 2.1, 0.04))
+    plt.savefig(f"./graphs/training loss{learning_rate}.jpeg")
 
     print("saved")
 
@@ -335,6 +346,8 @@ def train(model: GPTModel):
 @torch.no_grad()
 
 def calculate_loss(model):
+
+    net_losses = []
 
     model.eval()
 
@@ -353,6 +366,7 @@ def calculate_loss(model):
             losses[k] = loss.item()
 
         out[split] = losses.mean()
+
         model.train()
     return out
 
@@ -368,14 +382,39 @@ def main():
 
     model = model.to(device)
 
-    # train(model)
+#  train(model)
+
+    train_losses = []
+    test_losses = []
 
     for i in range (max_test_iterations):
 
         loss = calculate_loss(model)
+        
+        train_losses.append(loss['train'])
+        test_losses.append(loss['test'])
+        
         if (i+1) % test_step_iterations == 0:
             
-            print(f"At step {i+1} training loss: {loss['train']:.3f}, testing loss: {loss['test']:.3f}")
+            print(f"At step {i+1} training loss: {loss['train']:.5f}, testing loss: {loss['test']:.5f}")
+
+    print(len(train_losses), ", ", len(test_losses))
+
+    plt.scatter(np.arange(1, max_test_iterations+1), train_losses, color = "r", label = "training set")
+    
+    plt.scatter(np.arange(1, max_test_iterations+1), test_losses, color = "g", label = "testing set")
+    
+    plt.xticks(np.arange(0, max_test_iterations+1, test_iterations))
+    plt.yticks(np.arange(1.2, 2.1, 0.04))
+
+    plt.xlabel("loop num.")
+    plt.ylabel("data loss")
+    
+    plt.title("loss when testing")
+    
+    plt.legend()
+    plt.savefig(f"./graphs/testing loss{learning_rate}.jpeg")
+
 
     while True:
 
