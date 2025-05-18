@@ -4,13 +4,12 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # important constants to be used in the model
-
-model_path = "./src/model.pkl"
 
 block_size = 128 # size of a single word or a combination of words (we will refer to this a s a block)
 
@@ -20,23 +19,25 @@ vector_dimension = 512 # dimensions of each of the alphabet or token vector
 
 dropout = 0.5
 
-n_heads = 12 # no of attention heads
+n_heads = 16 # no of attention heads
 
 n_layers = 6 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 1e-6
+learning_rate = 3e-4
 
 max_iterations = 10000
 
-train_step_iteration = 1000
+train_step_iteration = max_iterations/10
 
 max_test_iterations = 200
 
 test_iterations = 10
 
 test_step_iterations = 5
+
+model_path = "./models/script/model.pkl"
 
 # using GPU if available
 
@@ -312,7 +313,11 @@ def train(model: GPTModel):
     optimizer = torch.optim.AdamW(model.parameters(), lr = learning_rate)
     print("starting training")
 
+    avg_losses = []
+
     losses = []
+
+    sum = 0
 
     for i in range (max_iterations):
 
@@ -320,7 +325,11 @@ def train(model: GPTModel):
 
         logits, loss = model.forward(x, y)
 
+        sum = sum + loss.item()
+
         losses.append(loss.item())
+
+        avg_losses.append(sum/(i+1))
 
         optimizer.zero_grad(set_to_none=True)
 
@@ -332,12 +341,23 @@ def train(model: GPTModel):
             print(f"{i+1} training loops done loss is: {loss.item():.5f}")
 
     torch.save(model, model_path)
+    print(avg_losses[-1])
 
-    plt.scatter(np.arange(0, max_iterations+1), losses)
-    plt.title("training data loss v/s training iterations")
-    plt.xticks(np.arange(0, max_iterations+1, 500))
-    plt.yticks(np.arange(1.2, 2.1, 0.04))
-    plt.savefig(f"./graphs/training loss{learning_rate}.jpeg")
+    plt.scatter(np.arange(0, max_iterations), avg_losses)
+    plt.title(" average training data loss in n loops v/s num loops")
+    plt.xticks(np.arange(0, max_iterations+1, 1000))
+    plt.yticks(np.arange(0, 2.1, 0.1))
+    plt.grid(True)
+    plt.savefig(f"./graphs/script/avg_training loss{learning_rate} {model_path[9: -4]}.jpeg")
+    plt.show()
+
+    plt.scatter(np.arange(0, max_iterations), losses)
+    plt.title("training data loss in n loops v/s num loops")
+    plt.xticks(np.arange(0, max_iterations+1, 1000))
+    plt.yticks(np.arange(0, 10.1, 0.5))
+    plt.grid(True)
+    plt.savefig(f"./graphs/script/training loss{learning_rate} {model_path[9: -4]}.jpeg")
+    plt.show()
 
     print("saved")
 
@@ -346,8 +366,6 @@ def train(model: GPTModel):
 @torch.no_grad()
 
 def calculate_loss(model):
-
-    net_losses = []
 
     model.eval()
 
@@ -376,17 +394,15 @@ def main():
 
     vocab_size = len(characters)
 
-    model = GPTModel(vocab_size)
-
-    model = torch.load(model_path, weights_only= False)
+    model = torch.load(model_path, weights_only= False) if os.path.exists(model_path) else GPTModel(vocab_size)
 
     model = model.to(device)
 
-#  train(model)
+    train(model)
 
     train_losses = []
     test_losses = []
-
+    
     for i in range (max_test_iterations):
 
         loss = calculate_loss(model)
@@ -398,22 +414,20 @@ def main():
             
             print(f"At step {i+1} training loss: {loss['train']:.5f}, testing loss: {loss['test']:.5f}")
 
-    print(len(train_losses), ", ", len(test_losses))
-
     plt.scatter(np.arange(1, max_test_iterations+1), train_losses, color = "r", label = "training set")
     
     plt.scatter(np.arange(1, max_test_iterations+1), test_losses, color = "g", label = "testing set")
     
-    plt.xticks(np.arange(0, max_test_iterations+1, test_iterations))
-    plt.yticks(np.arange(1.2, 2.1, 0.04))
+    plt.xticks(np.arange(0, max_test_iterations+1, 2 * test_iterations))
+    plt.yticks(np.arange(0, 2, 0.05))
 
     plt.xlabel("loop num.")
     plt.ylabel("data loss")
     
     plt.title("loss when testing")
-    
+    plt.grid(True)
     plt.legend()
-    plt.savefig(f"./graphs/testing loss{learning_rate}.jpeg")
+    plt.savefig(f"./graphs/script/testing loss{learning_rate} {model_path[9: -4]}.jpeg")
 
 
     while True:
