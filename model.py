@@ -11,23 +11,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 # important constants to be used in the model
 
-block_size = 128 # size of a single word or a combination of words (we will refer to this a s a block)
+block_size = 300 # size of a single word or a combination of words (we will refer to this a s a block)
 
-batch_size = 48 # no. of said blocks or words that we will handle at once
+batch_size = 16 # no. of said blocks or words that we will handle at once
 
-vector_dimension = 512 # dimensions of each of the alphabet or token vector
+vector_dimension = 384 # dimensions of each of the alphabet or token vector
 
-dropout = 0.5
+dropout = 0.4
 
 n_heads = 16 # no of attention heads
 
-n_layers = 6 # no of block layers used 
+n_layers = 8 # no of block layers used 
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 3e-4
+learning_rate = 3e-6 
 
-max_iterations = 10000
+max_iterations = 4000
 
 train_step_iteration = max_iterations/10
 
@@ -150,7 +150,7 @@ class AttentionHead(nn.Module):
         v = self.value(x)
 
         att = (q @ k.transpose(-2, -1)) / (k.shape[-1] ** 0.5)
-        att = att.masked_fill(self.tril[:time, :time] == 0 , float('-inf'))
+        att = att.masked_fill(self.tril[:time, :time] == 0 , float('-inf')) # type: ignore
 
         att = F.softmax(att, dim = -1)
         att = self.dropout(att)
@@ -325,38 +325,38 @@ def train(model: GPTModel):
 
         logits, loss = model.forward(x, y)
 
-        sum = sum + loss.item()
+        sum = sum + loss.item() # type: ignore
 
-        losses.append(loss.item())
+        losses.append(loss.item()) # type: ignore
 
         avg_losses.append(sum/(i+1))
 
         optimizer.zero_grad(set_to_none=True)
 
-        loss.backward()
+        loss.backward() # type: ignore
 
         optimizer.step()
 
         if (i+1) % train_step_iteration == 0:
-            print(f"{i+1} training loops done loss is: {loss.item():.5f}")
-
+            print(f"{i+1} training loops done loss is: {loss.item():.5f}", end=" ") # type: ignore
+            print(f"average loss is: {avg_losses[-1]:.5f}")
     torch.save(model, model_path)
     print(avg_losses[-1])
 
     plt.scatter(np.arange(0, max_iterations), avg_losses)
     plt.title(" average training data loss in n loops v/s num loops")
-    plt.xticks(np.arange(0, max_iterations+1, 1000))
+    plt.xticks(np.arange(0, max_iterations+1, max_iterations/10))
     plt.yticks(np.arange(0, 2.1, 0.1))
     plt.grid(True)
-    plt.savefig(f"./graphs/script/avg_training loss{learning_rate} {model_path[9: -4]}.jpeg")
+    plt.savefig(f"./graphs/script/avg_training loss{learning_rate}.jpeg")
     plt.show()
 
     plt.scatter(np.arange(0, max_iterations), losses)
     plt.title("training data loss in n loops v/s num loops")
-    plt.xticks(np.arange(0, max_iterations+1, 1000))
+    plt.xticks(np.arange(0, max_iterations+1, max_iterations/10))
     plt.yticks(np.arange(0, 10.1, 0.5))
     plt.grid(True)
-    plt.savefig(f"./graphs/script/training loss{learning_rate} {model_path[9: -4]}.jpeg")
+    plt.savefig(f"./graphs/script/training loss{learning_rate}.jpeg")
     plt.show()
 
     print("saved")
@@ -427,12 +427,12 @@ def main():
     plt.title("loss when testing")
     plt.grid(True)
     plt.legend()
-    plt.savefig(f"./graphs/script/testing loss{learning_rate} {model_path[9: -4]}.jpeg")
+    plt.savefig(f"./graphs/script/testing loss{learning_rate}.jpeg")
 
 
     while True:
 
-        prompt = input("enter a prompt within 128 characters: ")
+        prompt = input(f"enter a prompt within {block_size} characters: ")
         context = torch.tensor(encode(prompt), dtype = torch.long, device=device)
         context = context.unsqueeze(0)
 

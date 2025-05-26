@@ -2,17 +2,17 @@ import os
 import lzma
 from tqdm import tqdm
 
-wsl_dataset_path = "use this path if using WSL"
+wsl_dataset_path = "/mnt/c/Users/Madhav/Github Repos/gpt/dataset/openwebtext/"
 
-windows_dataset_path = "use this path if on windows"
+windows_dataset_path = "c:/Users/Madhav/Github Repos/gpt/dataset/openwebtext/"
 
-vocabulary_file = "vocab.txt"
+vocabulary_file = "./dataset/vocab.txt"
 
 vocabulary = set()
 
-training_data = "training data.txt"
+training_data = "./dataset/training data.txt"
 
-testing_data = "testing data.txt"
+testing_data = "./dataset/testing data.txt"
 
 def getFiles(directory: str):
 
