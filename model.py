@@ -9,11 +9,12 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# import gpt3_tokenizer
 # important constants to be used in the model
 
 block_size = 300 # size of a single word or a combination of words (we will refer to this a s a block)
 
-batch_size = 16 # no. of said blocks or words that we will handle at once
+batch_size = 12 # no. of said blocks or words that we will handle at once
 
 vector_dimension = 384 # dimensions of each of the alphabet or token vector
 
@@ -25,9 +26,9 @@ n_layers = 8 # no of block layers used
 
 max_sequence_length = 400 # max no of tokens that will be generated
 
-learning_rate = 3e-6 
+learning_rate = 1e-7
 
-max_iterations = 4000
+max_iterations = 8000
 
 train_step_iteration = max_iterations/10
 
@@ -37,7 +38,7 @@ test_iterations = 10
 
 test_step_iterations = 5
 
-model_path = "./models/script/model.pkl"
+model_path = "./gpt/models/script/model.pkl"
 
 # using GPU if available
 
@@ -56,7 +57,7 @@ def readTextFile(path: str):
 
     return characters
 
-characters = readTextFile('./dataset/vocab.txt')
+characters = readTextFile('./gpt/vocab.txt')
 
 #lambda functions to encode and decode  the text                  
 
@@ -72,7 +73,7 @@ decode = lambda s: ''.join(numToString[n] for n in s)
 
 def getChunk(split):
 
-    file_path = "./dataset/training data.txt" if split == "train" else "./dataset/testing data.txt"
+    file_path = "./gpt/dataset/training data.txt" if split == "train" else "./gpt/dataset/testing data.txt"
 
     with open(file_path, "rb") as f:
 
@@ -179,7 +180,7 @@ class MultiHeadAttention(nn.Module):
 
         return out
 
-# class that defines a single decoder block of the model
+# class that defines a single block of the model
 
 class Block(nn.Module):
 
@@ -348,7 +349,7 @@ def train(model: GPTModel):
     plt.xticks(np.arange(0, max_iterations+1, max_iterations/10))
     plt.yticks(np.arange(0, 2.1, 0.1))
     plt.grid(True)
-    plt.savefig(f"./graphs/script/avg_training loss{learning_rate}.jpeg")
+    plt.savefig(f"./gpt/graphs/script/avg_training loss{learning_rate}.jpeg")
     plt.show()
 
     plt.scatter(np.arange(0, max_iterations), losses)
@@ -356,7 +357,7 @@ def train(model: GPTModel):
     plt.xticks(np.arange(0, max_iterations+1, max_iterations/10))
     plt.yticks(np.arange(0, 10.1, 0.5))
     plt.grid(True)
-    plt.savefig(f"./graphs/script/training loss{learning_rate}.jpeg")
+    plt.savefig(f"./gpt/graphs/script/training loss{learning_rate}.jpeg")
     plt.show()
 
     print("saved")
@@ -427,7 +428,7 @@ def main():
     plt.title("loss when testing")
     plt.grid(True)
     plt.legend()
-    plt.savefig(f"./graphs/script/testing loss{learning_rate}.jpeg")
+    plt.savefig(f"./gpt/graphs/script/testing loss{learning_rate}.jpeg")
 
 
     while True:
