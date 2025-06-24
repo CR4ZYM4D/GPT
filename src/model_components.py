@@ -145,7 +145,7 @@ class MultiHeadSelfAttention(nn.Module):
                                                            self.embedding_dimension, 
                                                            self.head_dimension, 
                                                            self.device, 
-                                                           dropout_fraction) for _ in range(self.num_heads) for _ in range(self.num_heads)]
+                                                           dropout_fraction) for _ in range(self.num_heads)]
         
     def forward(self, x: torch.Tensor):
 
