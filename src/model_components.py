@@ -62,20 +62,19 @@ class LayerNorm(nn.Module):
 
 class AttentionHead(nn.Module):
 
-    def __init__(self, max_sequence_length: int, embedding_dimension: int, head_dimension: int, device: str, dropout_fraction: Optional[float] = 0.4):
+    def __init__(self, max_sequence_length: int, head_dimension: int, device: str, dropout_fraction: Optional[float] = 0.4):
         super().__init__()
 
         self.seq_length = max_sequence_length
-        self.embedding_dimension = embedding_dimension
         self.head_dimension = head_dimension
         self.device = device
         self.dropout = nn.Dropout(dropout_fraction)
 
-        self.query_weights = nn.Linear(self.embedding_dimension, 
+        self.query_weights = nn.Linear(self.head_dimension, 
                                        self.head_dimension, bias = False, device = self.device)
-        self.key_weights = nn.Linear(self.embedding_dimension, 
+        self.key_weights = nn.Linear(self.head_dimension, 
                                        self.head_dimension, bias = False, device = self.device)
-        self.value_weights = nn.Linear(self.embedding_dimension, 
+        self.value_weights = nn.Linear(self.head_dimension, 
                                        self.head_dimension, bias = False, device = self.device)
         self.register_buffer('tril', torch.tril(torch.ones(max_sequence_length, max_sequence_length, 
                                                            dtype = torch.int16, device = self.device)))
@@ -83,7 +82,7 @@ class AttentionHead(nn.Module):
 
     def forward(self, x: torch.Tensor):
 
-        # we get a tensor x of dimensions [batch_size x sequence_length x embedding_dimension]
+        # we get a tensor x of dimensions [batch_size x sequence_length x head_dimension]
 
         b, s, v = x.shape
 
@@ -104,7 +103,7 @@ class AttentionHead(nn.Module):
 
         key_results = key_results.transpose(-2, -1)
 
-        attention_scores = (torch.matmul(query_results, key_results)) / (self.embedding_dimension**0.5)
+        attention_scores = (torch.matmul(query_results, key_results)) / (self.head_dimension**0.5)
 
         # apply attention mask to hide all future tokens to make training more realistic and replace all zeros with
         # minus infinity
@@ -121,6 +120,62 @@ class AttentionHead(nn.Module):
         output = torch.matmul(attention_weights, value_results)
 
         return output
+
+# class for Multi Head Self Attention
+
+class MultiHeadSelfAttention(nn.Module):
+
+    def __init__(self, max_sequence_length: int, embedding_dimension: int, num_heads: int, device: str, dropout_fraction: Optional[float] = 0.4):
+        super().__init__()
+
+        self.max_sequence_length = max_sequence_length
+        self.embedding_dimension = embedding_dimension
+        self.num_heads = num_heads
+        self.device = device
+        self.dropout = nn.Dropout(dropout_fraction)
+
+        assert self.embedding_dimension % self.num_heads == 0 ("embedding dimension is not divisible by the number of heads")
+
+        self.head_dimension = self.embedding_dimension // self.num_heads
+
+        self.output_weights = nn.Linear(self.head_dimension * num_heads, self.embedding_dimension, bias = False,
+                                         device = self.device, dtype = torch.float32)
+        
+        self.attention_heads =  [AttentionHead(self.max_sequence_length, 
+                                                           self.embedding_dimension, 
+                                                           self.head_dimension, 
+                                                           self.device, 
+                                                           dropout_fraction) for _ in range(self.num_heads) for _ in range(self.num_heads)]
+        
+    def forward(self, x: torch.Tensor):
+
+        # x is a tensor of dimensions [batch_size x sequence_length x embedding_dimension]
+
+        b, s, v = x.shape
+
+        # pass successive parts of x along the embedding_dimension, each divided into a tensor of head_dimension to each individual attention head
+        # i.e. if a tensor has embedding dimension of 1024 and 8 heads, send the first 1024//8 = 128 embeddings (0..127) into the first head then the second
+        # 128 (128..255) into the second head and so on....
+
+        # breaking embedding_dimension of x into num_heads and head_dimension
+
+        x = x.view(b, s, self.num_heads, self.head_dimension)
+
+        # breaking of x into num_heads chunks with dimensions of [batch_size x sequence_length x 1 x head_dimension]
+        x = x.chunk(chunk = self.num_heads, dim = 2)
+
+        # passing each chunk into a separate attention head and then concatenating back all the results together to get a resulting tensor of dimensions
+        # [batch_size x sequence_length x embedding_dimension]. (Since it is asserted the num_heads * head_dimension = embedding_dimension)
+
+        attended_scores = torch.cat([attention_head(torch.squeeze(chunk, dim = 2)) for (chunk, attention_head) in (x, self.attention_heads)], dim = -1)
+
+        # pass thorugh the linear layer to get the final contextualized tensors of dimensions
+        # [batch_size x sequence_length x e,bedding_dimension]
+
+        contextualized_embeddings = self.output_weights(attended_scores)
+
+        return contextualized_embeddings
+    
 
 
 
