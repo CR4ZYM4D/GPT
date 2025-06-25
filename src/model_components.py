@@ -3,22 +3,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Optional, Tuple
 
+from model_config import ModelConfig, ModelBlockConfig
+
 # class for the token embeddings table. Takes in vocab_size and embedding/vector_dimension and return a table
 # of embeddings of each token index in the vocab. This embedding essentially helps the model understand the grammatical 
 # meaning of that token/word/character in the current context/sequence
 
 class TokenEmbeddings(nn.Module):
 
-    def __init__(self, vocab_size: int, embedding_dimension: int, pad_idx: Optional[int], device: str):
+    def __init__(self, vocab_size: int, embedding_dimension: int, pad_token_idx: Optional[int], device: str):
         super().__init__()
         self.vocab_size = vocab_size
         self.embedding_dimension = embedding_dimension
-        self.pad_idx = pad_idx
+        self.pad_token_idx = pad_token_idx
         self.device = device
 
         self.embeddings = nn.Embedding(self.vocab_size, 
                                        self.embedding_dimension, 
-                                       padding_idx= self.pad_idx,
+                                       padding_idx= self.pad_token_idx,
                                        device= device)
     
     def forward(self, token_ids: torch.Tensor):
@@ -165,7 +167,7 @@ class MultiHeadSelfAttention(nn.Module):
         x = x.chunk(chunk = self.num_heads, dim = 2)
 
         # passing each chunk into a separate attention head and then concatenating back all the results together to get a resulting tensor of dimensions
-        # [batch_size x sequence_length x embedding_dimension]. (Since it is asserted the num_heads * head_dimension = embedding_dimension)
+        # [batch_size x sequence_length x embedding_dimension]. (Since it is asserted that num_heads * head_dimension = embedding_dimension)
 
         attended_scores = torch.cat([attention_head(torch.squeeze(chunk, dim = 2)) for (chunk, attention_head) in (x, self.attention_heads)], dim = -1)
 
@@ -176,6 +178,88 @@ class MultiHeadSelfAttention(nn.Module):
 
         return contextualized_embeddings
     
+# class for the feed forward block after the attention block
 
+class FeedForward(nn.Module):
 
+    def __init__(self, embedding_dimension: int, device: str):
+        
+        super().__init__()
 
+        self.embedding_dimension = embedding_dimension
+
+        self.intermediate_dimension = self.embedding_dimension * 4
+
+        self.device = device
+
+        self.layer1 = nn.Linear(self.embedding_dimension, self.intermediate_dimension, device = self.device, dtype = torch.float32)
+
+        self.layer2 = nn.Linear(self.intermediate_dimension, self.embedding_dimension, device = self.device, dtype = torch.float32)
+
+    def forward(self, x: torch.Tensor):
+
+        x = self.layer1(x)
+
+        x = F.gelu(x, approximate = "tanh")
+
+        output = self.layer2(x)
+
+        return output
+    
+# class of a decoder block which contains all the blocks and will be stacked on top of each other
+
+class DecoderBlock(nn.Module):
+
+    def __init__(self, config: ModelBlockConfig, vocab_size:int, pad_token_idx: int):
+
+        super().__init__()
+
+        self.config = config
+
+        self.embedding_dimension = self,config.embedding_dimension
+
+        self.device = self.config.device
+
+        self.max_sequence_length = self.config.max_sequence_length
+
+        self.num_heads = self.config.num_heads
+
+        self.dropout_fraction = self.config.dropout_fraction
+
+        self.vocab_size = vocab_size
+
+        self.pad_token_idx = pad_token_idx 
+
+        self.layer_norm_1 = LayerNorm(self.embedding_dimension, self.device)
+
+        self.multi_head_attention_block = MultiHeadSelfAttention(self.max_sequence_length, 
+                                                                 self.embedding_dimension, 
+                                                                 self.num_heads, 
+                                                                 self.device, 
+                                                                 self.dropout_fraction)
+        
+        self.layer_norm_2 = LayerNorm(self.embedding_dimension, self.device)
+
+        self.feed_forward_block = FeedForward(self.embedding_dimension, self.device)
+
+    def forward(self, x:torch.Tensor):
+
+        # passing the token tensors through the first layer norm
+        x = self.layer_norm_1(x)
+
+        # passing the normalized tensor through the multi head self attention mechansim  
+        contextualized_embeddings = self.multi_head_attention_block(x)
+
+        # skip connection between contextualized and input embeddings
+        updated_embeddings = x + contextualized_embeddings
+
+        # passing these embeddings through the second layer norm
+        updated_embeddings = self.layer_norm_2(updated_embeddings)
+
+        # passing them through the feed forward block
+        final_embeddings = self.feed_forward_block(updated_embeddings)
+
+        # skip connection between feed forward and updated_embeddings
+        final_embeddings = final_embeddings + updated_embeddings
+
+        return final_embeddings
