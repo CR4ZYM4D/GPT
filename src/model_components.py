@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Optional, Tuple
 
-from model_config import ModelConfig, ModelBlockConfig
+from model_config import ModelBlockConfig
 
 # class for the token embeddings table. Takes in vocab_size and embedding/vector_dimension and return a table
 # of embeddings of each token index in the vocab. This embedding essentially helps the model understand the grammatical 
@@ -136,7 +136,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.device = device
         self.dropout = nn.Dropout(dropout_fraction)
 
-        assert self.embedding_dimension % self.num_heads == 0 ("embedding dimension is not divisible by the number of heads")
+        assert self.embedding_dimension % self.num_heads == 0 ,"embedding dimension is not divisible by the number of heads"
 
         self.head_dimension = self.embedding_dimension // self.num_heads
 
@@ -144,7 +144,7 @@ class MultiHeadSelfAttention(nn.Module):
                                          device = self.device, dtype = torch.float32)
         
         self.attention_heads =  [AttentionHead(self.max_sequence_length, 
-                                                           self.embedding_dimension, 
+                                                        #    self.embedding_dimension, 
                                                            self.head_dimension, 
                                                            self.device, 
                                                            dropout_fraction) for _ in range(self.num_heads)]
@@ -216,9 +216,11 @@ class DecoderBlock(nn.Module):
 
         self.config = config
 
-        self.embedding_dimension = self,config.embedding_dimension
+        self.embedding_dimension = self.config.embedding_dimension
 
         self.device = self.config.device
+
+        self.batch_size = self.config.batch_size
 
         self.max_sequence_length = self.config.max_sequence_length
 
@@ -263,3 +265,4 @@ class DecoderBlock(nn.Module):
         final_embeddings = final_embeddings + updated_embeddings
 
         return final_embeddings
+        
