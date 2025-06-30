@@ -51,6 +51,10 @@ class GPTModel(nn.Module):
 
         positions = self.positonal_encodings(torch.arange(start = 0, end = final_index+1, dtype = torch.int64, device = self.device))
 
+        remaining_positions = torch.zeros((self.max_sequence_length - final_index, self.embedding_dimension), device = self.device)
+
+        positions = torch.cat((positions, remaining_positions))
+
         x = input_embeds + positions
 
         x = self.decoder(x)
@@ -93,7 +97,7 @@ class GPTModel(nn.Module):
 
         return result
     
-    
+
         
 
 
