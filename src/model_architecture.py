@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import GPT2Tokenizer
+from transformers import AutoTokenizer
 
 from model_config import ModelConfig, ModelBlockConfig
 from model_components import DecoderBlock, TokenEmbeddings, PositionalEncodings, LayerNorm
 
 default_block_config = ModelBlockConfig()
 
-default_tokenizer = GPT2Tokenizer.from_pretrained("./gpt/models/tokenizer")
+default_tokenizer = AutoTokenizer.from_pretrained("./gpt/models/tokenizer")
 
 default_model_config = ModelConfig(default_block_config, default_tokenizer)
 
@@ -44,6 +44,7 @@ class GPTModel(nn.Module):
 
         print(self.config.tokenizer.special_tokens_map)
         print(self.vocab_size)
+        print(self.max_sequence_length)
 
     def forward(self, x: torch.Tensor, final_index: int = 0, targets: torch.Tensor = None):
 
@@ -81,7 +82,7 @@ class GPTModel(nn.Module):
     
     def generate(self, x: torch.Tensor, final_index: int = 0):
 
-        result = torch.clone(x[ : final_index])
+        result = torch.clone(x[ : final_index+1])
 
         next_index = None
 
@@ -97,13 +98,3 @@ class GPTModel(nn.Module):
 
         return result
     
-
-        
-
-
-
-
-
-
-
-
