@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import os
+import random
 
 from model_architecture import GPTModel 
 
@@ -15,21 +16,31 @@ model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
 # model = model.to(device)
 
-
+length = 0
+output_prompts = []
 
 with open(train_set_path, 'r') as f:
 
-    eos_token = model.config.tokenizer.encode("<|endoftext|>", add_special_tokens = False, padding = False, return_tensors = 'pt')
-    texts = ["hello world"] * 4
-    all_tokens = []
-    for text in texts:
-        tokens = model.config.tokenizer.encode(text, add_special_tokens = True, padding = 'max_length', max_length = 1023, return_tensors = 'pt')
-        tokens = torch.cat((tokens, eos_token), dim = -1)
-        print(tokens.shape)
-        all_tokens.append( tokens)
-    
-    all_tokens = torch.cat([tokens for tokens in all_tokens], dim = 0)
+    # read the data of the text file
+    text = f.read()
 
-    print(all_tokens)
-    print(all_tokens.shape)
+    # generate random points to make the text until there as the input_prompt incomplete wrods can help the model generalize better(hopefully)
+    promptlines = torch.randint(len(text)//5, len(text)//3,  size = (4,)).tolist()
+
+    # get the text prompts in a list
+    input_prompts = [text[:prompt] for prompt in promptlines]
+
+    output_prompts = [text[1:]] * len(promptlines)
+
+output_prompts.append(text[1:])
+
+input_tokens = model.config.tokenizer(input_prompts, padding = 'max_length', return_tensors = 'pt')['input_ids']
+output_tokens = model.config.tokenizer(output_prompts, padding = 'max_length', return_tensors = 'pt')['input_ids']
+
+
+print(input_tokens, output_tokens, sep = "\n\n")
+
+print(input_tokens.shape, output_tokens.shape)
+  #  print(i[0, 2:])
+print()
 
