@@ -20,7 +20,7 @@ with open(train_set_path, 'r') as f:
 
     # read the data of the text file
     text = f.read()
-    text = "Hello World How are you"
+    
     # generate random points to make the text until there as the input_prompt incomplete wrods can help the model generalize better(hopefully)
     promptlines = torch.randint(len(text)//5, len(text)//3,  size = (4,)).tolist()
 
