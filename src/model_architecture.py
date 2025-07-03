@@ -22,46 +22,45 @@ class GPTModel(nn.Module):
         self.vocab_size = len(self.config.tokenizer)
         self.pad_token_idx = self.config.tokenizer.convert_tokens_to_ids(self.config.tokenizer.pad_token)
         self.eos_token_idx = self.config.tokenizer.convert_tokens_to_ids(self.config.tokenizer.eos_token)
-        self.device = self.config.block_config.device
         self.embedding_dimension = self.config.block_config.embedding_dimension
         self.max_sequence_length = self.config.block_config.max_sequence_length
 
         self.input_embeddings = TokenEmbeddings(self.vocab_size, 
                                                 self.embedding_dimension,
-                                                self.pad_token_idx,
-                                                self.device)
+                                                self.pad_token_idx)
 
         self.positonal_encodings = PositionalEncodings(self.max_sequence_length, 
-                                                       self.embedding_dimension, 
-                                                       self.device)
+                                                       self.embedding_dimension)
 
-        self.decoder = nn.ModuleList([DecoderBlock(self.config.block_config, self.vocab_size, 
+        self.decoder = nn.Sequential(*[DecoderBlock(self.config.block_config, self.vocab_size, 
                                                    self.pad_token_idx) for _ in range(self.config.num_layers)])
 
-        self.final_layer_norm = LayerNorm(self.embedding_dimension, self.device)
+        self.final_layer_norm = LayerNorm(self.embedding_dimension)
 
-        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size, device = self.device)
+        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size)
 
         print(self.config.tokenizer.special_tokens_map)
         print(self.vocab_size)
         print(self.max_sequence_length)
 
-    def forward(self, x: torch.Tensor, final_index: int = 0, targets: torch.Tensor = None):
+    def forward(self, x: torch.Tensor, targets: torch.Tensor = None, device: str = 'cpu'):
 
+        # shape of x = batch_size x sequence_length
         input_embeds = self.input_embeddings(x)
 
-        positions = self.positonal_encodings(torch.arange(start = 0, end = final_index+1, dtype = torch.int64, device = self.device))
+        # shape of x = batch_size x sequence_length x embedding_dimension
+        positions = self.positonal_encodings(torch.arange(start = 0, end = self.max_sequence_length, dtype = torch.int64))
 
-        remaining_positions = torch.zeros((self.max_sequence_length - final_index, self.embedding_dimension), device = self.device)
-
-        positions = torch.cat((positions, remaining_positions))
-
+        # shape of x = batch_size x sequence_length x embedding_dimension
         x = input_embeds + positions
 
+        # shape of x = batch_size x sequence_length x embedding_dimension
         x = self.decoder(x)
 
+        # shape of x = batch_size x sequence_length x embedding_dimension
         x = self.final_layer_norm(x)
 
+        # shape of x = batch_size x sequence_length x vocab_size
         logits = F.softmax(self.vocab_layer(x), dim = -1)
 
         if targets == None:
@@ -72,17 +71,21 @@ class GPTModel(nn.Module):
 
             # for when model is in training
 
-            # logits shape = 32, 1024, 50260
+            # logits shape = batch_size x sequence_length x vocab_size
 
-            # targets shape = 32 x 1024 x 50260
+            # targets shape = batch_size x sequence_length
 
-            loss = F.cross_entropy(logits, targets)
+            # predicted_tokens shape = batch_size x sequence_length
+            predicted_tokens = logits.permute(0, 2, 1)
+
+            loss = F.cross_entropy(predicted_tokens, targets)
 
         return logits, loss
     
-    def generate(self, x: torch.Tensor, final_index: int = 0):
+    def generate(self, x: torch.Tensor):
 
-        result = torch.clone(x[ : final_index+1])
+        # shape of x = batch_size x sequence_length
+        result = torch.clone(x[ :, :final_index+1])
 
         next_index = None
 
@@ -94,7 +97,7 @@ class GPTModel(nn.Module):
 
             final_index += 1
 
-            result = torch.cat((result, next_token))
+            result = torch.cat((result, next_token), dim = 1)
 
         return result
     
