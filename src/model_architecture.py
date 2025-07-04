@@ -37,19 +37,19 @@ class GPTModel(nn.Module):
 
         self.final_layer_norm = LayerNorm(self.embedding_dimension)
 
-        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size)
+        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size, device = 'cuda')
 
         print(self.config.tokenizer.special_tokens_map)
         print(self.vocab_size)
         print(self.max_sequence_length)
 
-    def forward(self, x: torch.Tensor, targets: torch.Tensor = None, device: str = 'cpu'):
+    def forward(self, x: torch.Tensor, targets: torch.Tensor = None, device: str = 'cuda'):
 
         # shape of x = batch_size x sequence_length
         input_embeds = self.input_embeddings(x)
 
         # shape of x = batch_size x sequence_length x embedding_dimension
-        positions = self.positonal_encodings(torch.arange(start = 0, end = self.max_sequence_length, dtype = torch.int64))
+        positions = self.positonal_encodings(torch.arange(start = 0, end = self.max_sequence_length, dtype = torch.int64, device = device))
 
         # shape of x = batch_size x sequence_length x embedding_dimension
         x = input_embeds + positions

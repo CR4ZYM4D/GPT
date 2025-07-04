@@ -4,7 +4,7 @@ class ModelBlockConfig():
     def __init__(self, 
                  embedding_dimension: int = 14, 
                  batch_size: int = 4,
-                 max_sequence_length: int = 1280, 
+                 max_sequence_length: int = 32, 
                  num_heads: int = 14, 
                  dropout_fraction: float = 0.4):
         
