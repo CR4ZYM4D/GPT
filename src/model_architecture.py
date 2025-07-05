@@ -109,16 +109,16 @@ class GPTModel(nn.Module):
 
                 logits, loss = self.forward(x)
 
-                # get probabilites of the 
-                logits = logits[0, final_index, :]                
+                # get probabilites of the final_index
+                logits = logits[0, final_token, :]                
 
-                next_token = torch.multinomial(logits, num_samples = 1)
+                next_token = torch.argmax(logits.view(1, self.vocab_size), dim = -1)
 
-                result[0, final_index] = next_token[0].item()
+                result[0, final_token] = next_token[0].item()
 
-                result[0, final_index+1] = self.eos_token_idx
+                result[0, final_token+1] = self.eos_token_idx
 
-                final_index += 1
+                final_token += 1
 
         return self.config.tokenizer.decode(result)
     
@@ -151,8 +151,5 @@ class GPTModel(nn.Module):
 
         self.optimizer.step()
 
+        return loss
         
-        
-        
-
-    
