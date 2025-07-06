@@ -3,12 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 import random
+import shutil
+from tqdm import tqdm
 
 from model_architecture import GPTModel 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_path = "./gpt/models/model.pkl"
-train_set_path = "./gpt/dataset/training data.txt"
+train_set_path = "./gpt/dataset/subset"
 
 print(device)
 
@@ -16,29 +18,25 @@ model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
 model = model.to(device)
 
-with open(train_set_path, 'r') as f:
+for i in tqdm(range(21), desc = "subset number"):
 
-    # read the data of the text file
-    text = f.read()
+	current_directory  = os.path.join(f"{train_set_path}{i}")
+	
+	# returns list of folders in each subset
+	current_directory_folders = os.listdir(current_directory)
 
-    text = ["Hello World", "hello"]    
-    # generate random points to make the text until there as the input_prompt incomplete wrods can help the model generalize better(hopefully)
-    # promptlines = torch.randint(len(text)//5, len(text)//3,  size = (4,)).tolist()
-    target_text = ["hi"]
-    tokens = model.config.tokenizer(target_text[0] , padding = 'max_length', max_length = model.max_sequence_length, return_tensors = 'pt')['input_ids']
-    model.generate(tokens)
-    # get the text prompts in a tensor batch
-    # input_tokens = torch.cat([model.config.tokenizer(text[:prompt], padding = 'max_length', max_length = model.max_sequence_length, return_tensors = 'pt')['input_ids'] for prompt in promptlines], dim = 0)
-    # output_tokens = torch.cat([model.config.tokenizer(text[1:], padding = 'max_length', max_length = model.max_sequence_length, return_tensors = 'pt')['input_ids']for _ in range(len(promptlines))], dim = 0)
+	# moving all files from odd indexed folders to even indexed ones
 
-# input_tokens, output_tokens = input_tokens.to(device), output_tokens.to(device)
+	for i in tqdm(range(1,len(current_directory_folders), 2), desc = f"directory{i} and {i-1}", leave=False):
 
+		destination_folder = os.path.join(current_directory, current_directory_folders[i-1])
 
-# print(input_tokens, output_tokens, sep = "\n\n")
+		src_folder = os.path.join(current_directory, current_directory_folders[i])
 
-# print(input_tokens.shape, output_tokens.shape)
-  #  print(i[0, 2:])
+		for item in os.listdir(src_folder):
 
-# logits, loss = model.forward(input_tokens, output_tokens)
+			destination_path = os.path.join(destination_folder, item)
 
-# print(loss)
+			src_path = os.path.join(src_folder, item)
+
+			shutil.move(src_path, destination_folder)
