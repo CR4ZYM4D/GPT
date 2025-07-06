@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 import random
-import shutil
 from tqdm import tqdm
 
 from model_architecture import GPTModel 
@@ -20,23 +19,34 @@ model = model.to(device)
 
 for i in tqdm(range(21), desc = "subset number"):
 
-	current_directory  = os.path.join(f"{train_set_path}{i}")
-	
-	# returns list of folders in each subset
-	current_directory_folders = os.listdir(current_directory)
+	src_directory = f"{train_set_path}{i}"
 
-	# moving all files from odd indexed folders to even indexed ones
+	directory_files = os.listdir(src_directory)
 
-	for i in tqdm(range(1,len(current_directory_folders), 2), desc = f"directory{i} and {i-1}", leave=False):
+	num_files = len(directory_files)
 
-		destination_folder = os.path.join(current_directory, current_directory_folders[i-1])
+	for i in range(0, num_files, 8):
 
-		src_folder = os.path.join(current_directory, current_directory_folders[i])
+		batch_files = directory_files[i: i+8]
 
-		for item in os.listdir(src_folder):
+		count= 0
 
-			destination_path = os.path.join(destination_folder, item)
+		input_texts = []
 
-			src_path = os.path.join(src_folder, item)
+		target_texts = []
+		
+		for file in batch_files:
 
-			shutil.move(src_path, destination_folder)
+			with open(file, 'r') as f:
+
+				text = f.read()
+				
+				indices = torch.randint(low = len(text)//30, high = len(text)//3, size = (4,)).tolist()
+				
+				input_texts = [text[:index+1] for index in indices] if count == 0 else input_texts.append([text[:index+1] for index in indices])
+
+				target_texts = [text[1: ]] if count == 0 else target_texts.append(text[1: ])
+
+				count += 1
+
+		loss = model.train(input_texts, target_texts)
