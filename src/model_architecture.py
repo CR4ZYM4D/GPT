@@ -122,7 +122,7 @@ class GPTModel(nn.Module):
 
         return self.config.tokenizer.decode(result)
     
-    def train(self, input_texts: List[str], target_texts: List[str], lr: float = 1e-3):
+    def train(self, input_texts: List[str], target_texts: List[str], lr: float = 1e-4):
 
         # so that we can send one of the complete sequences for four of the text sequences of the same file to reduce memory overhead
         multiplier = len(input_texts)//len(target_texts)

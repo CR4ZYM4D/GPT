@@ -50,7 +50,7 @@ class LayerNorm(nn.Module):
         super().__init__()
 
         self.embedding_dimension = embedding_dimension
-        self.layer = nn.LayerNorm(self.embedding_dimension, device = 'cuda')
+        self.layer = nn.LayerNorm(self.embedding_dimension, device = 'cuda') * (self.embedding_dimension ** -0.5)
 
     def forward(self, x: torch.Tensor):
 
