@@ -5,18 +5,18 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer
 from typing import List
 
-from model_config import ModelConfig, ModelBlockConfig
+from model_config import GPT1ModelConfig, GPT2ModelConfig, ModelBlockConfig
 from model_components import DecoderBlock, TokenEmbeddings, PositionalEncodings, LayerNorm
 
 default_block_config = ModelBlockConfig()
 
 default_tokenizer = AutoTokenizer.from_pretrained("./gpt/models/tokenizer")
 
-default_model_config = ModelConfig(default_block_config, default_tokenizer)
+default_model_config = GPT1ModelConfig(default_block_config, default_tokenizer)
 
 class GPTModel(nn.Module):
 
-    def __init__(self, config: ModelConfig = default_model_config):
+    def __init__(self, config: GPT2ModelConfig | GPT1ModelConfig = default_model_config):
         
         super().__init__()
 

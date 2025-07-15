@@ -26,7 +26,9 @@ for j in tqdm(range(21), desc = "subset number"):
 
 	with open("./gpt/dataset/completed_subsets.txt", 'r') as f:
 
-		if src_directory in f.read():
+		completed_subsets = f.readlines()
+
+		if src_directory in completed_subsets:
 
 			continue 
 
@@ -44,12 +46,6 @@ for j in tqdm(range(21), desc = "subset number"):
 
 	trained_files = set()
 
-	if(os.path.exists(f"./gpt/dataset/subset{j}_trained_files.txt")):
-
-		with open(f"./gpt/dataset/subset{j}_trained_files.txt", 'r')as f:
-
-			trained_files = set(f.read())
-
 	for i in tqdm(range(0, num_files, 8), leave = False):
 
 		batch_files = directory_files[i: i+8]
@@ -64,15 +60,15 @@ for j in tqdm(range(21), desc = "subset number"):
 		
 			for file in batch_files:
 
-				with open(file, 'r') as f:
+				with open(f"./gpt/dataset/subset{j}/{file}", 'r') as f:
 
 					text = f.read()
 				
 					indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (4,)).tolist()
 				
-					input_texts = [text[:index+1] for index in indices] if count == 0 else input_texts.append([text[:index+1] for index in indices])
+					input_texts = [text[:index+1] for index in indices] if count == 0 else input_texts.extend([text[:index+1] for index in indices])
 
-					target_texts = [text[1: ]] if count == 0 else target_texts.append(text[1: ])
+					target_texts = [text[1: ]] if count == 0 else target_texts.extend([text[1: ]])
 
 					count += 1
 
@@ -81,10 +77,6 @@ for j in tqdm(range(21), desc = "subset number"):
 			torch.save(model, model_path)
 
 			trained_files.update(batch_files)
-
-			with open(f"./gpt/dataset/subset{j}_trained_files.txt", 'w')as f:
-
-				f.write(f"{file}\n" for file in batch_files)
 
 			subset_loss += loss.item()
 
