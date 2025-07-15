@@ -46,7 +46,7 @@ for j in tqdm(range(21), desc = "subset number"):
 
 	for i in tqdm(range(0, num_files, 8), leave = False):
 
-		batch_files = directory_files[i: i+16]
+		batch_files = directory_files[i: i+8]
 
 
 		input_texts = []
@@ -59,7 +59,7 @@ for j in tqdm(range(21), desc = "subset number"):
 
 				text = f.read()
 				
-				indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (1,)).tolist()
+				indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (2,)).tolist()
 				
 				input_texts.extend([text[:index+1] for index in indices])
 
@@ -73,9 +73,9 @@ for j in tqdm(range(21), desc = "subset number"):
 
 		subset_perplexity += torch.exp(loss).item()
 
-		subset_avg_loss.append(subset_loss/(i//16 + 1))
+		subset_avg_loss.append(subset_loss/(i//8 + 1))
 			
-		subset_avg_perplexity.append(subset_perplexity / (i//16 +1))
+		subset_avg_perplexity.append(subset_perplexity / (i//8 +1))
 
 	print(f"subset number {j} completed, total and average loss in subset is: {subset_loss: .3f} and {subset_avg_loss:.4f}")
 	print(f"total and average perplexity in subset is: {subset_perplexity: .3f} and {subset_avg_perplexity: .4f}")
