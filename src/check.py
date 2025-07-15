@@ -15,3 +15,9 @@ print(torch.__version__)
 # print(new_tensor, new_tensor.shape, sep = '\n')
 
 print(torch.randint(2, 10, (2,)).tolist())
+
+list = []
+
+list.extend([1,2,3])
+
+print(list)

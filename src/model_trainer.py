@@ -44,47 +44,38 @@ for j in tqdm(range(21), desc = "subset number"):
 
 	subset_avg_perplexity = []
 
-	trained_files = set()
-
 	for i in tqdm(range(0, num_files, 8), leave = False):
 
 		batch_files = directory_files[i: i+8]
 
-		if batch_files not in trained_files:
-	
-			count= 0
 
-			input_texts = []
+		input_texts = []
 
-			target_texts = []
+		target_texts = []
 		
-			for file in batch_files:
+		for file in batch_files:
 
-				with open(f"./gpt/dataset/subset{j}/{file}", 'r') as f:
+			with open(f"./gpt/dataset/subset{j}/{file}", 'r') as f:
 
-					text = f.read()
+				text = f.read()
 				
-					indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (4,)).tolist()
+				indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (4,)).tolist()
 				
-					input_texts = [text[:index+1] for index in indices] if count == 0 else input_texts.extend([text[:index+1] for index in indices])
+				input_texts.extend([text[:index+1] for index in indices])
 
-					target_texts = [text[1: ]] if count == 0 else target_texts.extend([text[1: ]])
+				target_texts.extend([text[1: ]])
 
-					count += 1
+		logits, loss = model.train(input_texts, target_texts)
 
-			logits, loss = model.train(input_texts, target_texts)
+		torch.save(model, model_path)
 
-			torch.save(model, model_path)
+		subset_loss += loss.item()
 
-			trained_files.update(batch_files)
+		subset_perplexity += torch.exp(loss).item()
 
-			subset_loss += loss.item()
-
-			subset_perplexity += torch.exp(loss).item()
-
-			subset_avg_loss.append(subset_loss/(i//8 + 1))
+		subset_avg_loss.append(subset_loss/(i//8 + 1))
 			
-			subset_avg_perplexity.append(subset_perplexity / (i//8 +1))
+		subset_avg_perplexity.append(subset_perplexity / (i//8 +1))
 
 	print(f"subset number {j} completed, total and average loss in subset is: {subset_loss: .3f} and {subset_avg_loss:.4f}")
 	print(f"total and average perplexity in subset is: {subset_perplexity: .3f} and {subset_avg_perplexity: .4f}")
