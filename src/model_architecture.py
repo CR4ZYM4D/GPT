@@ -124,34 +124,5 @@ class GPTModel(nn.Module):
 
         return self.config.tokenizer.decode(result)
     
-    def train(self, input_texts: List[str], target_texts: List[str], lr: float = 1e-4):
 
-        # so that we can send one of the complete sequences for four of the text sequences of the same file to reduce memory overhead
-        multiplier = len(input_texts)//len(target_texts)
-        
-        # safety for error handling
-        assert len(input_texts) % len(target_texts) == 0 and multiplier >= 1 , "invalid input to target sequences to train"
-
-        if lr != 1e-3:
-            self.optimizer = optim.AdamW(self.parameters(), lr = lr)
-
-        # reset the gradients
-        self.optimizer.zero_grad()
-
-        # convert to tokens
-        input_tokens = torch.cat([self.config.tokenizer(input_text, padding = "max_length", max_length = self.max_sequence_length, 
-                                return_tensors = 'pt')['input_ids'] for input_text in input_texts],
-                                dim = 0).to(device='cuda')
-
-        target_tokens = torch.cat([self.config.tokenizer(target_text, padding = "max_length", max_length = self.max_sequence_length, 
-                        return_tensors = 'pt')['input_ids'].repeat(multiplier, 1) for target_text in target_texts],
-                        dim = 0).to(device='cuda')
-        
-        logits, loss = self.forward(input_tokens, target_tokens)
-
-        loss.backward()
-
-        self.optimizer.step()
-
-        return loss
         
