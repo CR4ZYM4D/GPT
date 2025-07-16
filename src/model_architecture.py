@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from transformers import AutoTokenizer
-from typing import List
 
 from model_config import GPT1ModelConfig, GPT2ModelConfig, ModelBlockConfig
 from model_components import DecoderBlock, TokenEmbeddings, PositionalEncodings, LayerNorm
@@ -123,6 +122,3 @@ class GPTModel(nn.Module):
                 final_token += 1
 
         return self.config.tokenizer.decode(result)
-    
-
-        

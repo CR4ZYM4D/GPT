@@ -21,20 +21,23 @@ train_set_path = "./gpt/dataset/subset"
 
 print(device)
 
+# loading existing model or initializing one
+
 model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
 model = model.to(device)
 
 optimizer = model.optimizer
 
-# summary writer
+# initializing summary writer
 
 summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
 # Grad Scaler 
+
 scaler = GradScaler()
 
-# adding checkpoints to save vRAM
+# adding checkpoints to save vRAM and cache
 
 def wrap_with_checkpoint(module):
 
@@ -67,6 +70,8 @@ def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
 	
 	return input_tokens, target_tokens
    
+# creating profiler to track things
+
 with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 			 schedule = torch.profiler.schedule(wait = 1, warmup = 1, active = 3, repeat = 1),
 			 on_trace_ready = torch.profiler.tensorboard_trace_handler('./gpt/profiler'),
@@ -74,7 +79,11 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 			 profile_memory = True, 
 			 with_stack = True) as prof:
 
+	# iterating through each subset
+
 	for j in tqdm(range(21), desc = "subset number"):
+
+		# loading the subset files and checking if model has used it for training
 
 		src_directory = f"{train_set_path}{j}"
 
@@ -90,6 +99,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		num_files = len(directory_files)
 	
+		# initializing loss and perplexity for model performance tracking
+
 		subset_loss = 0.0
 
 		subset_perplexity = 0.0
@@ -97,6 +108,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 		subset_avg_loss = []
 
 		subset_avg_perplexity = []
+
+		# iterating through subset in batches of 8
 
 		for i in tqdm(range(0, num_files, 8), leave = False):
 
@@ -125,6 +138,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 				optimizer.zero_grad()
 
+				# tokenizing input and target texts
+
 				input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
 
 				# using autocast for mixed precision training
@@ -133,6 +148,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 					logits, loss = model.forward(input_tokens, target_tokens)
 
+				# updating loss and perplexity
+
 				subset_loss += loss.item()
 
 				subset_perplexity += torch.exp(loss).item()
@@ -140,6 +157,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 				subset_avg_loss.append(subset_loss/ (i//8 +1))
 
 				subset_avg_perplexity.append(subset_perplexity/ (i//8 +1))
+
+				# logging to tensorboard
 
 				summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
 
@@ -155,17 +174,25 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 				prof.step()
 
+		# updating that the subset has been trained on
+
 		with open("./gpt/dataset/completed_subsets.txt", 'w') as f:
 
 			f.write(f"{src_directory}\n")
 
+		# saving model for backup
+
 		torch.save(model, model_path)
+
+		# logging total loss and perplexity of each subset to tensorboard
 
 		summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
 
 		summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
 
 		print(f"Subset {j} completed with total loss: {subset_loss} and total perplexity: {subset_perplexity}")
+
+# closing summary writer
 
 summary_writer.flush()
 
