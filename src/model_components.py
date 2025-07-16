@@ -139,10 +139,10 @@ class MultiHeadSelfAttention(nn.Module):
         self.output_weights = nn.Linear(self.head_dimension * num_heads, self.embedding_dimension, bias = False,
                                          dtype = torch.float32, device = 'cuda')
         
-        self.attention_heads =  [AttentionHead(self.max_sequence_length, 
+        self.attention_heads =  nn.ModuleList([AttentionHead(self.max_sequence_length, 
                                                         #    self.embedding_dimension, 
                                                            self.head_dimension,  
-                                                           dropout_fraction) for _ in range(self.num_heads)]
+                                                           dropout_fraction) for _ in range(self.num_heads)])
         
     def forward(self, x: torch.Tensor):
 

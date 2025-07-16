@@ -65,7 +65,7 @@ class GPTModel(nn.Module):
         x = self.final_layer_norm(x)
 
         # shape of x = batch_size x sequence_length x vocab_size
-        logits = F.softmax(self.vocab_layer(x), dim = -1)
+        logits = self.vocab_layer(x)
 
         if targets == None:
 
@@ -108,6 +108,8 @@ class GPTModel(nn.Module):
             while final_token < self.max_sequence_length and next_index != self.eos_token_idx:
 
                 logits, loss = self.forward(x)
+
+                logits = torch.softmax(logits, dim = -1)
 
                 # get probabilites of the final_index
                 logits = logits[0, final_token, :]                
