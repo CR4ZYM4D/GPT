@@ -59,7 +59,7 @@ for j in tqdm(range(21), desc = "subset number"):
 
 				text = f.read()
 				
-				indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (2,)).tolist()
+				indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (4,)).tolist()
 				
 				input_texts.extend([text[:index+1] for index in indices])
 
