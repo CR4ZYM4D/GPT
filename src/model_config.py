@@ -2,9 +2,9 @@ class ModelBlockConfig():
 
 
     def __init__(self, 
-                 embedding_dimension: int = 784, 
+                 embedding_dimension: int = 768, 
                  batch_size: int = 32,
-                 max_sequence_length: int = 2048, 
+                 max_sequence_length: int = 1024, 
                  num_heads: int = 8, 
                  dropout_fraction: float = 0.4):
         

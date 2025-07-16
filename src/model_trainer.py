@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.amp.grad_scaler import GradScaler
 from torch.amp.autocast_mode import autocast
 from torch.utils.checkpoint import checkpoint
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from torch.profiler import profile, ProfilerActivity
 
 from model_architecture import GPTModel
@@ -31,23 +31,24 @@ optimizer = model.optimizer
 
 # initializing summary writer
 
-summary_writer = SummaryWriter(log_dir = "./gpt/logs")
+# summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
 # Grad Scaler 
 
 scaler = GradScaler()
 
 # adding checkpoints to save vRAM and cache
+class CheckpointBlock(nn.Module):
+    def __init__(self, block):
+        super().__init__()
+        self.block = block
 
-def wrap_with_checkpoint(module):
+    def forward(self, x):
+        def custom_forward(*inputs):
+            return self.block(*inputs)
+        return checkpoint(custom_forward, x)
 
-	def forward(*inputs):
-
-		return module(*inputs)
-	
-	return lambda x: checkpoint(forward, x)
-
-model.decoder = nn.Sequential(*[wrap_with_checkpoint(block) for block in model.decoder])
+model.decoder = nn.Sequential(*[CheckpointBlock(block) for block in model.decoder])
 
 # tokenizing input and target sequences
 
@@ -60,11 +61,11 @@ def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
 	assert len(input_texts) % len(target_texts) == 0 and multiplier >= 1 , "invalid input to target sequences to train"
 
         # convert to tokens
-	input_tokens = torch.cat([model.config.tokenizer(input_text, padding = "max_length", max_length = model.max_sequence_length, 
+	input_tokens = torch.cat([model.config.tokenizer(input_text, padding = "max_length", max_length = model.max_sequence_length, truncation=True, 
                                 return_tensors = 'pt')['input_ids'] for input_text in input_texts],
                                 dim = 0).to(device='cuda')
 
-	target_tokens = torch.cat([model.config.tokenizer(target_text, padding = "max_length", max_length = model.max_sequence_length, 
+	target_tokens = torch.cat([model.config.tokenizer(target_text, padding = "max_length", max_length = model.max_sequence_length, truncation=True,
                         return_tensors = 'pt')['input_ids'].repeat(multiplier, 1) for target_text in target_texts],
                         dim = 0).to(device='cuda')
 	
@@ -160,9 +161,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 				# logging to tensorboard
 
-				summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
+				# summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
 
-				summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
+				# summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
 
 				# scaling the loss
 
@@ -186,14 +187,14 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# logging total loss and perplexity of each subset to tensorboard
 
-		summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
+		# summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
 
-		summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
+		# summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
 
 		print(f"Subset {j} completed with total loss: {subset_loss} and total perplexity: {subset_perplexity}")
 
 # closing summary writer
 
-summary_writer.flush()
+# summary_writer.flush()
 
-summary_writer.close()
+# summary_writer.close()
