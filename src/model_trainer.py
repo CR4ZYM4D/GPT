@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.amp.grad_scaler import GradScaler
 from torch.amp.autocast_mode import autocast
 from torch.utils.checkpoint import checkpoint
-# from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from torch.profiler import profile, ProfilerActivity
 
 from model_architecture import GPTModel
@@ -21,7 +21,7 @@ train_set_path = "./gpt/dataset/subset"
 
 print(device)
 
-# loading existing model or initializing one
+loading existing model or initializing one
 
 model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
@@ -31,7 +31,7 @@ optimizer = model.optimizer
 
 # initializing summary writer
 
-# summary_writer = SummaryWriter(log_dir = "./gpt/logs")
+summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
 # Grad Scaler 
 
@@ -161,9 +161,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 				# logging to tensorboard
 
-				# summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
+				summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
 
-				# summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
+				summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
 
 				# scaling the loss
 
@@ -187,14 +187,14 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# logging total loss and perplexity of each subset to tensorboard
 
-		# summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
+		summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
 
-		# summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
+		summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
 
 		print(f"Subset {j} completed with total loss: {subset_loss} and total perplexity: {subset_perplexity}")
 
 # closing summary writer
 
-# summary_writer.flush()
+summary_writer.flush()
 
-# summary_writer.close()
+summary_writer.close()
