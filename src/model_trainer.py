@@ -21,7 +21,7 @@ train_set_path = "./gpt/dataset/subset"
 
 print(device)
 
-loading existing model or initializing one
+# loading existing model or initializing one
 
 model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
