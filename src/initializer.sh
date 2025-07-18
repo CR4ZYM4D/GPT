@@ -10,6 +10,8 @@ nvidia-smi
 
 good=$(python3 -c "import torch; print(torch.cuda.is_available())")
 
+pip3 install tensorboard transformers torchmetrics torchtext tqdm 
+
 if [[ "$good" == "True" ]]; then
 
     echo "Pytorch installation is good to go"

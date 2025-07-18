@@ -187,9 +187,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# logging total loss and perplexity of each subset to tensorboard
 
-		summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
+		# summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
 
-		summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
+		# summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
 
 		print(f"Subset {j} completed with total loss: {subset_loss} and total perplexity: {subset_perplexity}")
 

@@ -11,7 +11,9 @@ default_block_config = ModelBlockConfig()
 
 default_tokenizer = AutoTokenizer.from_pretrained("./gpt/models/tokenizer")
 
-default_model_config = GPT1ModelConfig(default_block_config, default_tokenizer)
+version = (int)(input("enter model config version (0 for small, any other integer for large): "))
+
+default_model_config = GPT1ModelConfig(default_block_config, default_tokenizer) if version == 0 else GPT2ModelConfig(default_block_config, default_tokenizer)
 
 class GPTModel(nn.Module):
 
