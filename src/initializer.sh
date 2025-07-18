@@ -8,7 +8,7 @@ apt install unzip -y
 
 nvidia-smi
 
-good =$(python3 -c "import torch; print(torch.cuda.is_available())")
+good=$(python3 -c "import torch; print(torch.cuda.is_available())")
 
 if [[ "$good" == "True" ]]; then
 
