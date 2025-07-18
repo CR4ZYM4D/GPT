@@ -3,7 +3,6 @@ import torch
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(torch.__version__)
 
-
 # print(device)
 
 # tensor = torch.randn((1, 1, 8))

@@ -106,7 +106,7 @@ class GPTModel(nn.Module):
 
             next_index = None
 
-            while final_token < self.max_sequence_length and next_index != self.eos_token_idx:
+            while final_token < self.max_sequence_length-1 and next_index != self.eos_token_idx:
 
                 logits, loss = self.forward(x)
 
@@ -123,4 +123,5 @@ class GPTModel(nn.Module):
 
                 final_token += 1
 
-        return self.config.tokenizer.decode(result)
+        return self.config.tokenizer.decode(result[0], skip_special_tokens=True, 
+                                            clean_up_tokenization_spaces=True)

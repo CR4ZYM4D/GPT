@@ -130,7 +130,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 				
 					input_texts.extend([text[:index+1] for index in indices])
 
-					target_texts.extend([text[1: ]])
+					target_texts.extend([text])
 
 
 			    # setting the model in training mode
@@ -142,6 +142,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 				# tokenizing input and target texts
 
 				input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
+
+				target_tokens = target_tokens[0, 1:] # removing the first token as the model starts prediction from second token
 
 				# using autocast for mixed precision training
 
