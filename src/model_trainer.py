@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.amp.grad_scaler import GradScaler
 from torch.amp.autocast_mode import autocast
 from torch.utils.checkpoint import checkpoint
-# from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from torch.profiler import profile, ProfilerActivity
 
 from model_architecture import GPTModel
@@ -31,7 +31,7 @@ optimizer = model.optimizer
 
 # initializing summary writer
 
-# summary_writer = SummaryWriter(log_dir = "./gpt/logs")
+summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
 # Grad Scaler 
 
@@ -139,25 +139,21 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			optimizer.zero_grad()
 
-				# tokenizing input and target texts
+			# tokenizing input and target texts
 
 			input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
-			print(target_tokens.shape)
 
 			target_tokens = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
-			print(target_tokens.shape)
 
 			target_tokens = torch.cat((target_tokens, torch.tensor(model.pad_token_idx, device = device).view((1, 1)).repeat(32, 1)), dim = 1) # padding the last token to pad token id
 
-			print(target_tokens.shape)
-
-				# using autocast for mixed precision training
+			# using autocast for mixed precision training
 
 			with autocast(device_type='cuda'):
 
 				logits, loss = model.forward(input_tokens, target_tokens)
 
-				# updating loss and perplexity
+			# updating loss and perplexity
 
 			subset_loss += loss.item()
 
@@ -169,9 +165,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			# logging to tensorboard
 
-			# summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
+			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
 
-			# summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
+			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
 
 			# scaling the loss
 
@@ -195,14 +191,14 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# logging total loss and perplexity of each subset to tensorboard
 
-		# summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
+		summary_writer.add_scalar(f"model total loss", subset_loss, j+1)
 
-		# summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
+		summary_writer.add_scalar(f"model total perplexity", subset_perplexity, j+1)
 
 		print(f"Subset {j} completed with total loss: {subset_loss} and total perplexity: {subset_perplexity}")
 
 # closing summary writer
 
-# summary_writer.flush()
+summary_writer.flush()
 
-# summary_writer.close()
+summary_writer.close()
