@@ -42,11 +42,7 @@ class GPTModel(nn.Module):
 
         self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size, device = 'cuda')
 
-        self.optimizer = optim.AdamW(self.parameters(), lr = 1e-3)
-
-        print(self.config.tokenizer.special_tokens_map)
-        print(self.vocab_size)
-        print(self.max_sequence_length)
+        self.optimizer = optim.AdamW(self.parameters(), lr = 1e-4)
 
     def forward(self, x: torch.Tensor, targets: torch.Tensor = None, device: str = 'cuda'):
 
@@ -102,7 +98,7 @@ class GPTModel(nn.Module):
         
             final_token = torch.where(x[0, :] == self.eos_token_idx)
 
-            final_token = final_token[0].item() - 1
+            final_token = final_token[0].item()
 
             next_index = None
 
