@@ -4,8 +4,6 @@ This is an implementation of the 2019 Research Paper [Language Models Are Unsupe
 
 **The Readme.md file explains the flow of data, datasets used, various components and their purpose and the training procedure**
 
-_GPU compute is expensive, while everything has been proof checked and verified to work prefectly fine on my local GPU, it simply does not have the vRAM or power to actually train it (furthermore it takes around 350 hrs to train the entire model on my GPU with an embedding dimension of 16 and sequence length of 12). If any model is not available then I am currently arranging the funds to train it using cloud platforms (Runpod is really cheap like 72 cents/hour for an RTX3090) please be patient or help me raise the money_
-
 ## What does it aim to achieve?
 
 This Repository has been made as an attempt to help people understand how at a crude level, current [autoregressive](https://www.google.com/search?client=firefox-b-e&channel=entpr&q=autoregressive+models) AI models work i.e by implementing very basic LLM trained on an extremely large dataset, followed by fine-tuning them and lastly, using reinforcement learning with human feedback to teach the model what to speak.
@@ -151,3 +149,5 @@ Just install the required libraries, load the model and call the generate method
 
 
 Note: If there is any code in the root directory, **_do not_** refer to it as it will be dropped soon
+
+_GPU compute is expensive, while everything has been proof checked and verified to work perfectly fine on my local GPU, it simply does not have the vRAM or power to actually train it (furthermore it takes around 350 hrs to train the entire model on my GPU with an embedding dimension of 16 and sequence length of 12). If any model is not available, then I am currently arranging the funds to train it using cloud platforms._
