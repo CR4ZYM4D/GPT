@@ -150,4 +150,4 @@ Just install the required libraries, load the model and call the generate method
 
 Note: If there is any code in the root directory, **_do not_** refer to it as it will be dropped soon
 
-_GPU compute is expensive, while everything has been proof checked and verified to work perfectly fine on my local GPU, it simply does not have the vRAM or power to actually train it (furthermore it takes around 150 hrs to train the entire model on my GPU with an embedding dimension of 16 and sequence length of 12). If any model is not available, then I am currently arranging the funds to train it using cloud platforms._
+_GPU compute is expensive, while everything has been proof checked and verified to work perfectly fine on my local GPU, it simply does not have the vRAM or power to actually train it (furthermore it takes around 150 hrs to train the entire model on my GPU with an embedding dimension of 256 and sequence length of 128). If any model is not available, then I am currently arranging the funds to train it using cloud platforms._
