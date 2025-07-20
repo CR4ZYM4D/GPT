@@ -88,8 +88,10 @@ class GPTModel(nn.Module):
     
     def generate(self, x: str):
 
+        device = next(self.parameters()).device
+
         x = self.config.tokenizer(x, padding = "max_length", max_length = self.max_sequence_length, truncation=True,
-                                return_tensors = 'pt')['input_ids'].to(device = 'cuda')
+                                return_tensors = 'pt')['input_ids'].to(device)
         
         result = torch.clone(x)
 
