@@ -44,7 +44,10 @@ class GPTModel(nn.Module):
 
         self.optimizer = optim.AdamW(self.parameters(), lr = 1e-4)
 
-    def forward(self, x: torch.Tensor, targets: torch.Tensor = None, device: str = 'cuda'):
+    def forward(self, x: torch.Tensor, targets: torch.Tensor = None):
+
+        # getting device
+        device = x.device
 
         # shape of x = batch_size x sequence_length
         input_embeds = self.input_embeddings(x)
@@ -112,6 +115,8 @@ class GPTModel(nn.Module):
                 logits = logits[0, final_token, :]                
 
                 next_token = (torch.argmax(logits.view(1, self.vocab_size), dim = -1))[0].item()
+
+                print(f"next token: {next_token}")
 
                 result[0, final_token] = next_token
 

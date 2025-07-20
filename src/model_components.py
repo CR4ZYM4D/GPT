@@ -19,7 +19,7 @@ class TokenEmbeddings(nn.Module):
 
         self.embeddings = nn.Embedding(self.vocab_size, 
                                        self.embedding_dimension, 
-                                       padding_idx= self.pad_token_idx, device = 'cuda')
+                                       padding_idx= self.pad_token_idx)
     
     def forward(self, token_ids: torch.Tensor):
 
@@ -36,7 +36,7 @@ class PositionalEncodings(nn.Module):
         self.sequence_length = max_sequence_length
         self.embedding_dimension = embedding_dimension
 
-        self.encodings = nn.Embedding(self.sequence_length, self.embedding_dimension, device = 'cuda')
+        self.encodings = nn.Embedding(self.sequence_length, self.embedding_dimension)
 
     def forward(self, input_text: torch.Tensor):
 
@@ -50,7 +50,7 @@ class LayerNorm(nn.Module):
         super().__init__()
 
         self.embedding_dimension = embedding_dimension
-        self.layer = nn.LayerNorm(self.embedding_dimension, device = 'cuda')
+        self.layer = nn.LayerNorm(self.embedding_dimension)
 
     def forward(self, x: torch.Tensor):
 
@@ -69,13 +69,13 @@ class AttentionHead(nn.Module):
         self.dropout = nn.Dropout(dropout_fraction)
 
         self.query_weights = nn.Linear(self.head_dimension, 
-                                       self.head_dimension, bias = False, device= 'cuda')
+                                       self.head_dimension, bias = False)
         self.key_weights = nn.Linear(self.head_dimension, 
-                                       self.head_dimension, bias = False, device= 'cuda')
+                                       self.head_dimension, bias = False)
         self.value_weights = nn.Linear(self.head_dimension, 
-                                       self.head_dimension, bias = False, device= 'cuda')
+                                       self.head_dimension, bias = False)
         self.register_buffer('tril', torch.tril(torch.ones(max_sequence_length, max_sequence_length, 
-                                                           dtype = torch.int16, device= 'cuda')))
+                                                           dtype = torch.int16)))
 
 
     def forward(self, x: torch.Tensor):
@@ -137,7 +137,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.head_dimension = self.embedding_dimension // self.num_heads
 
         self.output_weights = nn.Linear(self.head_dimension * num_heads, self.embedding_dimension, bias = False,
-                                         dtype = torch.float32, device = 'cuda')
+                                         dtype = torch.float32)
         
         self.attention_heads =  nn.ModuleList([AttentionHead(self.max_sequence_length, 
                                                         #    self.embedding_dimension, 
@@ -187,9 +187,9 @@ class FeedForward(nn.Module):
 
         self.intermediate_dimension = self.embedding_dimension * 4
 
-        self.layer1 = nn.Linear(self.embedding_dimension, self.intermediate_dimension, dtype = torch.float32, device = 'cuda')
+        self.layer1 = nn.Linear(self.embedding_dimension, self.intermediate_dimension, dtype = torch.float32)
 
-        self.layer2 = nn.Linear(self.intermediate_dimension, self.embedding_dimension, dtype = torch.float32, device = 'cuda')
+        self.layer2 = nn.Linear(self.intermediate_dimension, self.embedding_dimension, dtype = torch.float32)
 
     def forward(self, x: torch.Tensor):
 
