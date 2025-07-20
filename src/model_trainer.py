@@ -1,7 +1,6 @@
 import torch
-import torch.optim as optim
 import torch.nn as nn
-from torch.amp.grad_scaler import GradScaler
+import deepspeed
 from torch.amp.autocast_mode import autocast
 from torch.utils.checkpoint import checkpoint
 from torch.utils.tensorboard import SummaryWriter
@@ -18,6 +17,7 @@ import os
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_path = "./gpt/models/model.pkl"
 train_set_path = "./gpt/dataset/subset"
+deepspeed_config_path = "./gpt/deepspeed_config.json"
 
 print(device)
 
@@ -25,17 +25,40 @@ print(device)
 
 model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
 
-model = model.to(device)
-
-optimizer = model.optimizer
+model, optimizer, _, _ = deepspeed.initialize(
+	model = model,
+	model_parameters = model.parameters(),
+	config = deepspeed_config_path
+)
 
 # initializing summary writer
 
 summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
-# Grad Scaler 
+# tokenizing input and target sequences
 
-scaler = GradScaler()
+def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
+
+    # so that we can send one of the complete sequences for four of the text sequences of the same file to reduce memory overhead
+	multiplier = len(input_texts)//len(target_texts)
+        
+        # safety for error handling
+	assert len(input_texts) % len(target_texts) == 0 and multiplier >= 1 , "invalid input to target sequences to train"
+
+	tokenizer = model.module.config.tokenizer if hasattr(model, 'module') else model.config.tokenizer
+
+	max_sequence_length = model.module.max_sequence_length if hasattr(model, 'module') else model.max_sequence_length
+
+        # convert to tokens
+	input_tokens = torch.cat([tokenizer(input_text, padding = "max_length", max_length = max_sequence_length, truncation=True, 
+                                return_tensors = 'pt')['input_ids'] for input_text in input_texts],
+                                dim = 0)
+
+	target_tokens = torch.cat([tokenizer(target_text, padding = "max_length", max_length = max_sequence_length, truncation=True,
+                        return_tensors = 'pt')['input_ids'].repeat(multiplier, 1) for target_text in target_texts],
+                        dim = 0)
+	
+	return input_tokens, target_tokens
 
 # adding checkpoints to save vRAM and cache
 class CheckpointBlock(nn.Module):
@@ -48,29 +71,8 @@ class CheckpointBlock(nn.Module):
             return self.block(*inputs)
         return checkpoint(custom_forward, x)
 
-model.decoder = nn.Sequential(*[CheckpointBlock(block) for block in model.decoder])
+model.module.decoder = nn.Sequential(*[CheckpointBlock(block) for block in model.module.decoder]) if hasattr(model, "module") else nn.Sequential(*[CheckpointBlock(block) for block in model.decoder])
 
-# tokenizing input and target sequences
-
-def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
-
-    # so that we can send one of the complete sequences for four of the text sequences of the same file to reduce memory overhead
-	multiplier = len(input_texts)//len(target_texts)
-        
-        # safety for error handling
-	assert len(input_texts) % len(target_texts) == 0 and multiplier >= 1 , "invalid input to target sequences to train"
-
-        # convert to tokens
-	input_tokens = torch.cat([model.config.tokenizer(input_text, padding = "max_length", max_length = model.max_sequence_length, truncation=True, 
-                                return_tensors = 'pt')['input_ids'] for input_text in input_texts],
-                                dim = 0).to(device='cuda')
-
-	target_tokens = torch.cat([model.config.tokenizer(target_text, padding = "max_length", max_length = model.max_sequence_length, truncation=True,
-                        return_tensors = 'pt')['input_ids'].repeat(multiplier, 1) for target_text in target_texts],
-                        dim = 0).to(device='cuda')
-	
-	return input_tokens, target_tokens
-   
 # creating profiler to track things
 
 with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -137,21 +139,27 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			model.train()
 
-			optimizer.zero_grad()
+			model.zero_grad()
 
 			# tokenizing input and target texts
 
 			input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
 
+			input_tokens = input_tokens.to(model.device)
+			
+			target_tokens = target_tokens.to(model.device)
+
 			target_tokens = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
 
-			target_tokens = torch.cat((target_tokens, torch.tensor(model.pad_token_idx, device = device).view((1, 1)).repeat(32, 1)), dim = 1) # padding the last token to pad token id
+			pad_id = model.module.pad_token_idx if hasattr(model, "module") else model.pad_token_idx
+
+			pad_tensor = torch.full((32, 1), pad_id, dtype=torch.long, device=target_tokens.device)
+
+			target_tokens = torch.cat((target_tokens, pad_tensor), dim=1)
 
 			# using autocast for mixed precision training
 
-			with autocast(device_type='cuda'):
-
-				logits, loss = model.forward(input_tokens, target_tokens)
+			logits, loss = model.forward(input_tokens, target_tokens)
 
 			# updating loss and perplexity
 
@@ -171,11 +179,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			# scaling the loss
 
-			scaler.scale(loss).backward()
+			model.backward(loss)
 
-			scaler.step(optimizer)
-
-			scaler.update()
+			model.step()
 
 			prof.step()
 
