@@ -111,9 +111,9 @@ class GPTModel(nn.Module):
                 # get probabilites of the final_index
                 logits = logits[0, final_token, :]                
 
-                next_token = torch.argmax(logits.view(1, self.vocab_size), dim = -1)
+                next_token = (torch.argmax(logits.view(1, self.vocab_size), dim = -1))[0].item()
 
-                result[0, final_token] = next_token[0].item()
+                result[0, final_token] = next_token
 
                 result[0, final_token+1] = self.eos_token_idx
 
