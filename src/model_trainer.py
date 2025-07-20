@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import deepspeed
-from torch.amp.autocast_mode import autocast
 from torch.utils.checkpoint import checkpoint
 from torch.utils.tensorboard import SummaryWriter
 from torch.profiler import profile, ProfilerActivity
@@ -71,7 +70,12 @@ class CheckpointBlock(nn.Module):
             return self.block(*inputs)
         return checkpoint(custom_forward, x)
 
-model.module.decoder = nn.Sequential(*[CheckpointBlock(block) for block in model.module.decoder]) if hasattr(model, "module") else nn.Sequential(*[CheckpointBlock(block) for block in model.decoder])
+decoder_blocks = model.module.decoder if hasattr(model, "module") else model.decoder
+new_blocks = [CheckpointBlock(b) for b in decoder_blocks]
+if hasattr(model, "module"):
+    model.module.decoder = nn.Sequential(*new_blocks)
+else:
+    model.decoder = nn.Sequential(*new_blocks)
 
 # creating profiler to track things
 
@@ -193,7 +197,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# saving model for backup
 
-		torch.save(model, model_path)
+		model.save_checkpoint(model_path, tag = f"subset {j}")
 
 		# logging total loss and perplexity of each subset to tensorboard
 
