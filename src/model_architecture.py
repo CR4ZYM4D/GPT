@@ -100,9 +100,9 @@ class GPTModel(nn.Module):
 
             final_token = final_token[0].item()
 
-            next_index = None
+            next_token = None
 
-            while final_token < self.max_sequence_length-1 and next_index != self.eos_token_idx:
+            while final_token < self.max_sequence_length-1 and next_token != self.eos_token_idx:
 
                 logits, loss = self.forward(x)
 
