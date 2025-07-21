@@ -14,8 +14,7 @@ ds_config = {
         }
     },
     "fp16": {"enabled": True},
-    "zero_optimization": {"stage": 2},
-    "tensor_parallel": {"tp_size": gpu_count}
+    "zero_optimization": {"stage": 2}
 }
 
 with open(deepspeed_config_path, "w") as f:
