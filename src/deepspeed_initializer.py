@@ -7,6 +7,12 @@ gpu_count = torch.cuda.device_count()
 ds_config = {
     "train_batch_size": 32,
     "gradient_accumulation_steps": 1,
+    "optimizer": {
+        "type": "AdamW",
+        "params": {
+            "lr": 0.0001
+        }
+    },
     "fp16": {"enabled": True},
     "zero_optimization": {"stage": 2},
     "tensor_parallel": {"tp_size": gpu_count}
