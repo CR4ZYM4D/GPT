@@ -115,7 +115,7 @@ class AttentionHead(nn.Module):
         # perform matrix multiplication with value_results this results in a tensor of dimensions
         # [batch_size x sequence_length x head_dimension]
 
-        output = torch.matmul(attention_weights, value_results)
+        output = torch.matmul(attention_weights, value_results.to(attention_weights.dtype))
 
         return self.dropout(output)
 
@@ -171,7 +171,7 @@ class MultiHeadSelfAttention(nn.Module):
         # pass thorugh the linear layer to get the final contextualized tensors of dimensions
         # [batch_size x sequence_length x e,bedding_dimension]
 
-        contextualized_embeddings = self.output_weights(attended_scores)
+        contextualized_embeddings = self.output_weights(attended_scores.to(self.output_weights.weight.dtype))
 
         return self.dropout(contextualized_embeddings)
     
