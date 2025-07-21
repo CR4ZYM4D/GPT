@@ -42,7 +42,7 @@ class GPTModel(nn.Module):
 
         self.final_layer_norm = LayerNorm(self.embedding_dimension)
 
-        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size, device = 'cuda')
+        self.vocab_layer = nn.Linear(self.embedding_dimension, self.vocab_size)
 
         self.optimizer = optim.AdamW(self.parameters(), lr = 1e-4)
 

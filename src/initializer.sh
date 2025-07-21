@@ -10,7 +10,7 @@ nvidia-smi
 
 good=$(python3 -c "import torch; print(torch.cuda.is_available())")
 
-pip3 install tensorboard transformers torchmetrics torchtext tqdm deepspeed
+pip3 install tensorboard transformers torchmetrics torchtext tqdm deepspeed accelerate
 
 if [[ "$good" == "True" ]]; then
 
