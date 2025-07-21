@@ -68,7 +68,7 @@ class CheckpointBlock(nn.Module):
     def forward(self, x):
         def custom_forward(*inputs):
             return self.block(*inputs)
-        return checkpoint(custom_forward, x)
+        return checkpoint(custom_forward, x, use_reentrant = False)
 
 decoder_blocks = model.module.decoder if hasattr(model, "module") else model.decoder
 new_blocks = [CheckpointBlock(b) for b in decoder_blocks]

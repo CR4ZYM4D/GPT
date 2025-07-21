@@ -67,7 +67,7 @@ class GPTModel(nn.Module):
         x = self.final_layer_norm(x)
 
         # shape of x = batch_size x sequence_length x vocab_size
-        logits = self.vocab_layer(x)
+        logits = self.vocab_layer(x.to(self.vocab_layer.weight.dtype))
 
         if targets == None:
 
