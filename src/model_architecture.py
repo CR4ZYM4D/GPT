@@ -103,30 +103,30 @@ class GPTModel(nn.Module):
 
             # shape of x = batch_size x sequence_length
         
-            final_token = torch.where(x[0, :] == self.eos_token_idx)
+            final_token_index = torch.where(x[0, :] == self.eos_token_idx)
 
-            final_token = final_token[0].item()
+            final_token_index = final_token_index[0].item()
 
             next_token = None
 
-            while final_token < self.max_sequence_length-1 and next_token != self.eos_token_idx:
+            while final_token_index < self.max_sequence_length-1 and next_token != self.eos_token_idx:
 
                 logits, loss = self.forward(x)
 
                 logits = torch.softmax(logits, dim = -1)
 
                 # get probabilites of the final_index
-                logits = logits[0, final_token, :]                
+                logits = logits[0, final_token_index, :]                
 
                 next_token = (torch.argmax(logits.view(1, self.vocab_size), dim = -1))[0].item()
 
                 print(f"next token: {next_token}")
 
-                result[0, final_token] = next_token
+                result[0, final_token_index] = next_token
 
-                result[0, final_token+1] = self.eos_token_idx
+                result[0, final_token_index+1] = self.eos_token_idx
 
-                final_token += 1
+                final_token_index += 1
 
         return self.config.tokenizer.decode(result[0], skip_special_tokens=True, 
-                                            clean_up_tokenization_spaces=True)
+                                            clean_up_tokenization_spaces=True), final_token_index
