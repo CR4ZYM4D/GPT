@@ -3,7 +3,7 @@ class ModelBlockConfig():
 
     def __init__(self, 
                  embedding_dimension: int = 1024, 
-                 batch_size: int = 128,
+                 batch_size: int = 512,
                  max_sequence_length: int = 1024, 
                  num_heads: int = 8, 
                  dropout_fraction: float = 0.4):

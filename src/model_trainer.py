@@ -14,15 +14,13 @@ from tqdm import tqdm
 import os
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model_path = "./gpt/models/model.pkl"
+model_path = "./gpt/models/"
 train_set_path = "./gpt/dataset/subset"
 deepspeed_config_path = "./gpt/deepspeed_config.json"
 
 print(device)
 
-# loading existing model or initializing one
-
-model = torch.load(model_path) if os.path.exists(model_path) else GPTModel()
+model = GPTModel()
 
 model, optimizer, _, _ = deepspeed.initialize(
 	model = model,
@@ -118,9 +116,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# iterating through subset in batches of 8
 
-		for i in tqdm(range(0, num_files, 8), leave = False):
+		for i in tqdm(range(0, num_files, 128), leave = False):
 
-			batch_files = directory_files[i: i+8]
+			batch_files = directory_files[i: i + 128]
 
 			input_texts = []
 
@@ -157,7 +155,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			pad_id = model.module.pad_token_idx if hasattr(model, "module") else model.pad_token_idx
 
-			pad_tensor = torch.full((32, 1), pad_id, dtype=torch.long, device=target_tokens.device)
+			pad_tensor = torch.full((512, 1), pad_id, dtype=torch.long, device=target_tokens.device)
 
 			target_tokens = torch.cat((target_tokens, pad_tensor), dim=1)
 
@@ -171,19 +169,21 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			subset_perplexity += torch.exp(loss).item()
 
-			subset_avg_loss.append(subset_loss/ (i//8 +1))
+			subset_avg_loss.append(subset_loss/ (i//128 +1))
 
-			subset_avg_perplexity.append(subset_perplexity/ (i//8 +1))
+			subset_avg_perplexity.append(subset_perplexity/ (i//128 +1))
 
 			# logging to tensorboard
 
-			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//8 + 1)
+			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//128 + 1)
 
-			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//8 + 1)
+			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//128 + 1)
 
 			# scaling the loss
 
 			model.backward(loss)
+
+			model.clip_grad_norm(1.0)
 
 			model.step()
 
