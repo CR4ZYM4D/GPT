@@ -17,6 +17,26 @@ version = int(os.environ.get("MODEL_CONFIG_VERSION", 0))  # default GPT-1
 
 default_model_config = GPT1ModelConfig(default_block_config, default_tokenizer) if version == 0 else GPT2ModelConfig(default_block_config, default_tokenizer)
 
+def sample_top_p(logits, p: float = 1.0):
+
+    # logits are of dimensions [1 x 1 x vocab_size]
+
+    sorted_logits, logits_index = torch.sort(logits, dim = -1, descending=True)
+
+    probability_sum = torch.cumsum(sorted_logits, dim = -1) # take cumulative sum
+
+    mask = probability_sum - sorted_logits > p  # mask where cumulative sum exceeds p to remove highly improbable logits
+ 
+    sorted_logits[mask] = 0.0
+
+    sorted_logits = sorted_logits.divide(sorted_logits.sum(dim = -1, keepdim=True))  # normalize to get probabilities
+
+    next_token_index = torch.multinomial(sorted_logits, num_samples=1)  # sample from the distribution
+
+    next_token_index = logits_index.gather(dim=-1, index=next_token_index)  # gather the original indices
+
+    return next_token_index[0].item()
+
 class GPTModel(nn.Module):
 
     def __init__(self, config: GPT2ModelConfig | GPT1ModelConfig = default_model_config):
@@ -29,6 +49,7 @@ class GPTModel(nn.Module):
         self.eos_token_idx = self.config.tokenizer.convert_tokens_to_ids(self.config.tokenizer.eos_token)
         self.embedding_dimension = self.config.block_config.embedding_dimension
         self.max_sequence_length = self.config.block_config.max_sequence_length
+        self.temperature = self.config.temperature
 
         self.input_embeddings = TokenEmbeddings(self.vocab_size, 
                                                 self.embedding_dimension,
@@ -113,14 +134,12 @@ class GPTModel(nn.Module):
 
                 logits, loss = self.forward(x)
 
-                logits = torch.softmax(logits, dim = -1)
+                logits = torch.softmax(logits / self.temperature, dim = -1)
 
                 # get probabilites of the final_index
                 logits = logits[0, final_token_index, :]                
 
-                next_token = (torch.argmax(logits.view(1, self.vocab_size), dim = -1))[0].item()
-
-                print(f"next token: {next_token}")
+                next_token = sample_top_p(logits, p = 0.9)
 
                 result[0, final_token_index] = next_token
 

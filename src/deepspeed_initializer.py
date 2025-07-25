@@ -10,10 +10,16 @@ ds_config = {
     "optimizer": {
         "type": "AdamW",
         "params": {
-            "lr": 0.0001
+            "lr": 3e-5
         }
     },
-    "fp16": {"enabled": True},
+    "fp16": {
+        "enabled": True,
+        "loss_scale": 512,
+        "loss_scale_window": 10000,
+        "hysteresis": 10,
+        "min_loss_scale": 1
+        },
     "zero_optimization": {"stage": 2}
 }
 

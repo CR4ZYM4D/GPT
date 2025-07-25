@@ -1,4 +1,5 @@
 import torch
+from model_architecture import GPTModel
 
 def continueOrNot(prompt, model, final_token_index):
     
@@ -31,7 +32,9 @@ model_path = input("Enter model path relative to root folder: ")
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = torch.load(model_path)
+model =GPTModel()
+
+model.load_state_dict(torch.load(model_path), strict = False)
 
 model = model.to(device)
 

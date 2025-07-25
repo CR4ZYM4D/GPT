@@ -3,7 +3,7 @@ class ModelBlockConfig():
 
     def __init__(self, 
                  embedding_dimension: int = 1024, 
-                 batch_size: int = 32,
+                 batch_size: int = 128,
                  max_sequence_length: int = 1024, 
                  num_heads: int = 8, 
                  dropout_fraction: float = 0.4):
@@ -20,13 +20,15 @@ class ModelBlockConfig():
 # in the GPT-1 Model and GPT-2 small i.e ~133M parameters in this config v/s the ~119M parameters in the GPT-1 model and ~117M in the GPT-2 small model
 class GPT1ModelConfig():
 
-    def __init__(self, config: ModelBlockConfig, tokenizer, num_layers: int = 8):
+    def __init__(self, config: ModelBlockConfig, tokenizer, num_layers: int = 8, temperature: float = 0.7):
         
         self.num_layers = num_layers
         
         self.block_config = config
 
         self.tokenizer = tokenizer
+
+        self.temperature = temperature
     
         self.vocab_size = len(self.tokenizer)
 
@@ -34,10 +36,12 @@ class GPT1ModelConfig():
 # of parameters in the GPT-2 Model i.e ~1.3B parameters in this config v/s the ~1.4B parameters in the GPT-2 model
 class GPT2ModelConfig():
 
-    def __init__(self, config: ModelBlockConfig, tokenizer, num_layers: int = 128):
+    def __init__(self, config: ModelBlockConfig, tokenizer, num_layers: int = 128, temperature: float = 0.7):
         
         self.num_layers = num_layers
         
+        self.temperature = temperature
+
         self.block_config = config
 
         self.tokenizer = tokenizer
