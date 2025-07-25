@@ -197,7 +197,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		# saving model for backup
 
-		model.save_checkpoint(model_path, tag = f"subset {j}")
+		model.save_checkpoint(model_path, tag = f"subset{j}")
 
 		# logging total loss and perplexity of each subset to tensorboard
 
