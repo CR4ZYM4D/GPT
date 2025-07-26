@@ -114,11 +114,13 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		subset_avg_perplexity = []
 
-		# iterating through subset in batches of 8
+		# iterating through subset in batches of 128
 
 		for i in tqdm(range(0, num_files, 128), leave = False):
 
-			batch_files = directory_files[i: i + 128]
+			batch_len = min(128, num_files - i)
+
+			batch_files = directory_files[i: i + batch_len]
 
 			input_texts = []
 
