@@ -2,7 +2,7 @@ import deepspeed
 import torch
 from model_architecture import GPTModel
 
-model_path = './gpt/models/subset0'
+model_path = input("Enter model path relative to root folder: ")
 
 model = GPTModel()
 
@@ -36,14 +36,6 @@ def continueOrNot(prompt, inference_model, final_token_index):
         
     else: 
         return
-
-model_path = input("Enter model path relative to root folder: ")
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-model = torch.load(model_path)
-
-model = model.to(device)
 
 while(True):
 
