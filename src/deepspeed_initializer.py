@@ -5,7 +5,7 @@ deepspeed_config_path = "./gpt/deepspeed_config.json"
 
 gpu_count = torch.cuda.device_count()
 ds_config = {
-    "train_batch_size": 32,
+    "train_batch_size": 512,
     "gradient_accumulation_steps": 1,
     "optimizer": {
         "type": "AdamW",
@@ -13,14 +13,11 @@ ds_config = {
             "lr": 3e-5
         }
     },
-    "fp16": {
-        "enabled": True,
-        "loss_scale": 512,
-        "loss_scale_window": 10000,
-        "hysteresis": 10,
-        "min_loss_scale": 1
-        },
-    "zero_optimization": {"stage": 2}
+    "bf16":{
+        "enabled": True
+    },
+    "zero_optimization": {"stage": 2},
+    "gradient_clipping": 1.0
 }
 
 with open(deepspeed_config_path, "w") as f:
