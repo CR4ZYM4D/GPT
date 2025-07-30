@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import deepspeed
-from torch.cuda.amp import autocast
 from torch.utils.checkpoint import checkpoint
 from torch.utils.tensorboard import SummaryWriter
 from torch.profiler import profile, ProfilerActivity
@@ -14,9 +13,12 @@ from tqdm import tqdm
 
 import os
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_path = "./gpt/models/"
 train_set_path = "./gpt/dataset/subset"
 deepspeed_config_path = "./gpt/deepspeed_config.json"
+
+print(device)
 
 model = GPTModel()
 
@@ -72,8 +74,6 @@ if hasattr(model, "module"):
     model.module.decoder = nn.Sequential(*new_blocks)
 else:
     model.decoder = nn.Sequential(*new_blocks)
-
-device = next(model.parameters()).device
 
 # creating profiler to track things
 
@@ -149,9 +149,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
 
-			input_tokens = input_tokens.to(device)
+			input_tokens = input_tokens.to(model.device)
 			
-			target_tokens = target_tokens.to(device)
+			target_tokens = target_tokens.to(model.device)
 
 			target_tokens = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
 
@@ -163,8 +163,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			# using autocast for mixed precision training
 
-			with autocast(dtype = torch.bfloat16):
-				logits, loss = model.forward(input_tokens, target_tokens)
+			logits, loss = model.forward(input_tokens, target_tokens)
 
 			# updating loss and perplexity
 
@@ -186,13 +185,15 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			model.backward(loss)
 
+			model.clip_grad_norm(1.0)
+
 			model.step()
 
 			prof.step()
 
 		# updating that the subset has been trained on
 
-		with open("./gpt/dataset/completed_subsets.txt", 'a') as f:
+		with open("./gpt/dataset/completed_subsets.txt", 'w') as f:
 
 			f.write(f"{src_directory}\n")
 
