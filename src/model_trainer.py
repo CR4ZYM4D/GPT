@@ -14,12 +14,9 @@ from tqdm import tqdm
 import os
 import random
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_path = "./gpt/models/"
 train_set_path = "./gpt/dataset/subset"
 deepspeed_config_path = "./gpt/deepspeed_config.json"
-
-print(device)
 
 model = GPTModel()
 
@@ -34,6 +31,8 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     max_lr=3e-5,
     total_steps = 62500
 )
+
+device = next(model.parameters()).device
 
 
 # initializing summary writer
@@ -159,9 +158,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			input_tokens, target_tokens = tokenize_sequences(input_texts, target_texts)
 
-			input_tokens = input_tokens.to(model.device)
+			input_tokens = input_tokens.to(device)
 			
-			target_tokens = target_tokens.to(model.device)
+			target_tokens = target_tokens.to(device)
 
 			target_tokens = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
 
