@@ -75,8 +75,10 @@ class GPTModel(nn.Module):
         # shape of x = batch_size x sequence_length
         input_embeds = self.input_embeddings(x)
 
+        seq_len = x.size(1)
+
         # shape of x = batch_size x sequence_length x embedding_dimension
-        positions = self.positonal_encodings(torch.arange(start = 0, end = self.max_sequence_length, dtype = torch.int64, device = device))
+        positions = self.positonal_encodings(torch.arange(start = 0, end = seq_len, dtype = torch.int64, device = device))
 
         # shape of x = batch_size x sequence_length x embedding_dimension
         x = input_embeds + positions
@@ -87,8 +89,18 @@ class GPTModel(nn.Module):
         # shape of x = batch_size x sequence_length x embedding_dimension
         x = self.final_layer_norm(x)
 
+        if torch.isnan(x).any() or torch.isinf(x).any():
+            print("NaN or Inf detected in decoder output before final layer")
+            print("x stats:", x.mean().item(), x.std().item(), x.abs().max().item())
+            return x, torch.tensor(float('nan'), device=x.device)
+
+
         # shape of x = batch_size x sequence_length x vocab_size
         logits = self.vocab_layer(x.to(self.vocab_layer.weight.dtype))
+
+        if torch.isnan(logits).any() or torch.isinf(logits).any():
+            print("NaN or Inf in logits")
+            print("logits stats:", logits.mean().item(), logits.std().item(), logits.abs().max().item())
 
         if targets == None:
 
@@ -105,7 +117,7 @@ class GPTModel(nn.Module):
             # predicted_tokens shape = batch_size x vocab_size x sequence_length
             predicted_tokens = logits.permute(0, 2, 1)
 
-            loss = F.cross_entropy(predicted_tokens, targets)
+            loss = F.cross_entropy(predicted_tokens, targets, ignore_index=self.pad_token_idx, reduction='mean')
 
         return logits, loss
     

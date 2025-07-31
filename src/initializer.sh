@@ -4,7 +4,7 @@ apt update
 
 apt upgrade -y
 
-apt install unzip -y
+apt install unzip tmux nano -y
 
 nvidia-smi
 

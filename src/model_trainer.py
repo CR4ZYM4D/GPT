@@ -26,14 +26,7 @@ model, optimizer, _, _ = deepspeed.initialize(
 	config = deepspeed_config_path
 )
 
-scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    optimizer,
-    max_lr=3e-5,
-    total_steps = 62500
-)
-
 device = next(model.parameters()).device
-
 
 # initializing summary writer
 
@@ -63,24 +56,6 @@ def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
                         dim = 0)
 	
 	return input_tokens, target_tokens
-
-# adding checkpoints to save vRAM and cache
-class CheckpointBlock(nn.Module):
-    def __init__(self, block):
-        super().__init__()
-        self.block = block
-
-    def forward(self, x):
-        def custom_forward(*inputs):
-            return self.block(*inputs)
-        return checkpoint(custom_forward, x, use_reentrant = False)
-
-decoder_blocks = model.module.decoder if hasattr(model, "module") else model.decoder
-new_blocks = [CheckpointBlock(b) for b in decoder_blocks]
-if hasattr(model, "module"):
-    model.module.decoder = nn.Sequential(*new_blocks)
-else:
-    model.decoder = nn.Sequential(*new_blocks)
 
 # creating profiler to track things
 
@@ -123,11 +98,11 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		subset_avg_perplexity = []
 
-		# iterating through subset in batches of 128
+		# iterating through subset in batches of 24
 
-		for i in tqdm(range(0, num_files, 128), leave = False):
+		for i in tqdm(range(0, num_files, 24), leave = False):
 
-			batch_len = min(128, num_files - i)
+			batch_len = min(24, num_files - i)
 
 			batch_files = directory_files[i: i + batch_len]
 
@@ -192,16 +167,16 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			# logging to tensorboard
 
-			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//128 + 1)
+			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//72 + 1)
 
-			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//128 + 1)
+			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//72 + 1)
 
 			# scaling the loss
 
 			model.backward(loss)
 
 			model.step()
-			scheduler.step()
+	
 			prof.step()
 
 		# updating that the subset has been trained on
