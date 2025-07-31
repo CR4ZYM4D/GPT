@@ -12,6 +12,7 @@ from typing import List
 from tqdm import tqdm
 
 import os
+import random
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_path = "./gpt/models/"
@@ -28,11 +29,20 @@ model, optimizer, _, _ = deepspeed.initialize(
 	config = deepspeed_config_path
 )
 
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=3e-5,
+    total_steps = 62500
+)
+
+
 # initializing summary writer
 
 summary_writer = SummaryWriter(log_dir = "./gpt/logs")
 
 # tokenizing input and target sequences
+
+tokenizer = model.module.config.tokenizer if hasattr(model, 'module') else model.config.tokenizer
 
 def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
 
@@ -41,8 +51,6 @@ def tokenize_sequences(input_texts: List[str], target_texts: List[str]):
         
         # safety for error handling
 	assert len(input_texts) % len(target_texts) == 0 and multiplier >= 1 , "invalid input to target sequences to train"
-
-	tokenizer = model.module.config.tokenizer if hasattr(model, 'module') else model.config.tokenizer
 
 	max_sequence_length = model.module.max_sequence_length if hasattr(model, 'module') else model.max_sequence_length
 
@@ -102,6 +110,8 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 		directory_files = os.listdir(src_directory)
 
+		random.shuffle(directory_files)
+
 		num_files = len(directory_files)
 	
 		# initializing loss and perplexity for model performance tracking
@@ -157,13 +167,19 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			pad_id = model.module.pad_token_idx if hasattr(model, "module") else model.pad_token_idx
 
-			pad_tensor = torch.full((512, 1), pad_id, dtype=torch.long, device=target_tokens.device)
+			pad_tensor = torch.full((target_tokens.size(0), 1), pad_id, dtype=torch.long, device=target_tokens.device)
 
 			target_tokens = torch.cat((target_tokens, pad_tensor), dim=1)
 
 			# using autocast for mixed precision training
 
 			logits, loss = model.forward(input_tokens, target_tokens)
+
+			#skipping if inifinite loss
+
+			if not torch.isfinite(loss):
+				print(f"Non-finite loss at subset {j}, step {i//128 + 1}. Skipping batch.")
+				continue
 
 			# updating loss and perplexity
 
@@ -185,15 +201,13 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			model.backward(loss)
 
-			model.clip_grad_norm(1.0)
-
 			model.step()
-
+			scheduler.step()
 			prof.step()
 
 		# updating that the subset has been trained on
 
-		with open("./gpt/dataset/completed_subsets.txt", 'w') as f:
+		with open("./gpt/dataset/completed_subsets.txt", 'a') as f:
 
 			f.write(f"{src_directory}\n")
 
