@@ -116,7 +116,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 					text = f.read()
 				
-					indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (4,)).tolist()
+					indices = torch.randint(low = len(text)//30, high = len(text)-1, size = (1,)).tolist()
 				
 					input_texts.extend([text[:index+1] for index in indices])
 
@@ -152,7 +152,7 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 			#skipping if inifinite loss
 
 			if not torch.isfinite(loss):
-				print(f"Non-finite loss at subset {j}, step {i//128 + 1}. Skipping batch.")
+				print(f"Non-finite loss at subset {j}, step {i//72 + 1}. Skipping batch.")
 				continue
 
 			# updating loss and perplexity
@@ -161,9 +161,9 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			subset_perplexity += torch.exp(loss).item()
 
-			subset_avg_loss.append(subset_loss/ (i//128 +1))
+			subset_avg_loss.append(subset_loss/ (i//72 +1))
 
-			subset_avg_perplexity.append(subset_perplexity/ (i//128 +1))
+			subset_avg_perplexity.append(subset_perplexity/ (i//72 +1))
 
 			# logging to tensorboard
 
