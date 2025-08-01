@@ -10,7 +10,7 @@ ds_config = {
     "optimizer": {
         "type": "AdamW",
         "params": {
-            "lr": 3e-5
+            "lr": 5e-6
         }
     },
     "lr_scheduler":{

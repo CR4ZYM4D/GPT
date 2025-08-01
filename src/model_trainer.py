@@ -137,22 +137,22 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 			
 			target_tokens = target_tokens.to(device)
 
-			target_tokens = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
+			target_tokens[:, :-1] = target_tokens[:, 1:] # removing the first token as the model starts prediction from second token
 
 			pad_id = model.module.pad_token_idx if hasattr(model, "module") else model.pad_token_idx
 
-			pad_tensor = torch.full((target_tokens.size(0), 1), pad_id, dtype=torch.long, device=target_tokens.device)
-
-			target_tokens = torch.cat((target_tokens, pad_tensor), dim=1)
-
+			target_tokens[:, -1] = pad_id
+		
 			# using autocast for mixed precision training
 
 			logits, loss = model.forward(input_tokens, target_tokens)
 
+			if logits.min().item()>0.0:
+				print(logits.min().item(), " ", logits.max().item())
 			#skipping if inifinite loss
 
 			if not torch.isfinite(loss):
-				print(f"Non-finite loss at subset {j}, step {i//72 + 1}. Skipping batch.")
+				print(f"Non-finite loss at subset {j}, step {i//24 + 1}. Skipping batch.")
 				continue
 
 			# updating loss and perplexity
@@ -161,15 +161,15 @@ with profile(activities = [ProfilerActivity.CPU, ProfilerActivity.CUDA],
 
 			subset_perplexity += torch.exp(loss).item()
 
-			subset_avg_loss.append(subset_loss/ (i//72 +1))
+			subset_avg_loss.append(subset_loss/ (i//24 +1))
 
-			subset_avg_perplexity.append(subset_perplexity/ (i//72 +1))
+			subset_avg_perplexity.append(subset_perplexity/ (i//24 +1))
 
 			# logging to tensorboard
 
-			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//72 + 1)
+			summary_writer.add_scalar(f"subset {j} average loss", subset_avg_loss[-1], i//24 + 1)
 
-			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//72 + 1)
+			summary_writer.add_scalar(f"subset {j} average perplexity", subset_avg_perplexity[-1], i//24 + 1)
 
 			# scaling the loss
 
