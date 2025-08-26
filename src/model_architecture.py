@@ -8,10 +8,14 @@ from model_config import GPT1ModelConfig, GPT2ModelConfig, ModelBlockConfig
 from model_components import DecoderBlock, TokenEmbeddings, PositionalEncodings, LayerNorm
 
 import os
+from pathlib import Path
 
 default_block_config = ModelBlockConfig()
 
-default_tokenizer = AutoTokenizer.from_pretrained("./gpt/models/tokenizer")
+this_dir = Path(__file__).resolve().parent
+tokenizer_path = this_dir.parent / "models" / "tokenizer"
+
+default_tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path))
 
 version = int(os.environ.get("MODEL_CONFIG_VERSION", 0))  # default GPT-1
 
