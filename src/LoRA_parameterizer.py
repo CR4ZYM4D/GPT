@@ -2,9 +2,9 @@
 import torch 
 import torch.nn as nn
 import torch.nn.utils.parametrize as parametrize
-import os
+# import os
 
-from model_architecture import GPTModel
+# from model_architecture import GPTModel
 
 # create the class for LoRA parameterization of a general matrix like the vocab layer or the attention matrices
 
@@ -82,7 +82,7 @@ def apply_lora_to_model(model: nn.Module, device: str = 'cpu', rank: int = 1, al
         try:
            i,o = parametrize_layer(module, device=device, rank=rank, alpha=alpha)
            print(f"current LoRA matrix of B and A of sizes: [{i}, {rank}] and [{rank}, {o}] respectively")
-           print(f"Applied Lora to layer: {name} of size: [{i}, {o}]")
+           print(f"Applied LoRA to layer: {name} of size: [{i}, {o}]")
         
         except Exception as e:
             # skip if the module can't be parametrized
@@ -93,20 +93,20 @@ def apply_lora_to_model(model: nn.Module, device: str = 'cpu', rank: int = 1, al
 
 # testing if parameters are applied normally
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
     
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = GPTModel()
+#     model = GPTModel()
 
-    model_state = torch.load(os.path.join('./gpt/models/subset19/', 'mp_rank_00_model_states.pt'), map_location = device)
+#     model_state = torch.load(os.path.join('./gpt/models/subset19/', 'mp_rank_00_model_states.pt'), map_location = device)
 
-    missing, unexpected = model.load_state_dict(model_state['module'], strict = False)
+#     missing, unexpected = model.load_state_dict(model_state['module'], strict = False)
 
-    print("Missing keys:", missing)
-    print("Unexpected keys:", unexpected)
+#     print("Missing keys:", missing)
+#     print("Unexpected keys:", unexpected)
 
-    model = model.to(device)
+#     model = model.to(device)
 
-    apply_lora_to_model(model)
+#     apply_lora_to_model(model)
